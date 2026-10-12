@@ -10,7 +10,7 @@ using namespace std;
 
 void gen_frames(int n, double dt, double L, double h, double v_p, vector<particula> &sistema);
 
-int main(){
+int ejecutarPunto1(){
 	int n;
 	double L, h;
 	double dt = 0.1;
@@ -62,7 +62,7 @@ void gen_frames(int n, double dt, double L, double h, double v_p, vector<particu
 	double E = 0;
 	double T;
 	double k_b = 1; //cte de boltzman normalizada
-	//calcular la energía total y temperatura iniciales del sistema
+	//calcular la energï¿½a total y temperatura iniciales del sistema
 	for (int i = 0; i < n; i++){
 		E += 0.5*sistema[i].Getm()*Norma2(sistema[i].Getv());
 	}
@@ -99,7 +99,7 @@ void gen_frames(int n, double dt, double L, double h, double v_p, vector<particu
 
 
     // ------------------------------------------------
-    // Mover las partículas
+    // Mover las partï¿½culas
     // ------------------------------------------------
     for (int i = 0; i < n; i++) {
         sistema[i].mueva(dt);
@@ -118,7 +118,7 @@ void gen_frames(int n, double dt, double L, double h, double v_p, vector<particu
 
 
     // ------------------------------------------------
-    // Calcular energía actual
+    // Calcular energï¿½a actual
     // ------------------------------------------------
     E = 0.0;
 
@@ -137,7 +137,7 @@ void gen_frames(int n, double dt, double L, double h, double v_p, vector<particu
 
 
     // ------------------------------------------------
-    // Acumular tiempo para presión
+    // Acumular tiempo para presiï¿½n
     // ------------------------------------------------
     tiempo_med += dt;
 

@@ -7,7 +7,7 @@
 
 using namespace std;
 
-int ejecutarPunto3(){
+int ejecutarPunto4(){
 	Ising2D sistema;
 	
 	int invertidos, Long;
