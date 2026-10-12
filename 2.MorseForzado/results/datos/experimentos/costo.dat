@@ -1,0 +1,6 @@
+# metodo  evaluaciones_por_paso  tiempo_ms(dt=kDtRef)  error_final(dt=kDt)
+euler  1  4.10238  0.0151117
+euler_cromer  1  4.39043  8.17006e-05
+rk2  2  18.7536  7.69287e-05
+rk3  3  35.1595  2.68932e-06
+rk4  4  54.7765  5.17913e-09

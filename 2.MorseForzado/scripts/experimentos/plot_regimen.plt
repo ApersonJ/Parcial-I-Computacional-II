@@ -1,0 +1,16 @@
+set terminal pngcairo size 1500,500 enhanced font 'Verdana,10'
+set output 'results/figuras/experimentos/regimen_transitorio.png'
+set multiplot layout 1,3 title 'Morse forzado y amortiguado (RK4)'
+set grid
+set title 'x(t)'
+set xlabel 'Tiempo (t)'
+set ylabel 'Posicion (x)'
+plot 'results/datos/experimentos/regimen_rk4.dat' using 1:2 with lines notitle linecolor rgb 'blue'
+set title 'Energia mecanica E(t)'
+set ylabel 'E = T + P'
+plot 'results/datos/experimentos/regimen_rk4.dat' using 1:5 with lines notitle linecolor rgb 'dark-orange'
+set title 'Espacio de fase'
+set xlabel 'Posicion (x)'
+set ylabel 'Velocidad (v)'
+plot 'results/datos/experimentos/regimen_rk4.dat' using 2:3 with lines notitle linecolor rgb 'purple'
+unset multiplot
