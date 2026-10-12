@@ -16,7 +16,7 @@ void solicitarDatos(double &x0, double &v0,
                      int &opcion_acople, double &x2_0, double &v2_0, double &kappa);
 
 // --------------------------- funcion principal ------------------------------
-int main() {
+int ejecutarPunto2() {
     Osc_Morse_Forzado Oscilador;
 
     double x0, v0;

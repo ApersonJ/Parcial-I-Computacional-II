@@ -33,7 +33,7 @@ void guardarDatos(double x0, double v0, double dt, double tmax,
 void generarScriptsGnuplot(int n_guardar);
 
 // --------------------------- funcion principal ------------------------------
-int main() {
+int ejecutarPunto3() {
     double x0, v0;
     double dt, tmax;
     // Parametros del sistema.
