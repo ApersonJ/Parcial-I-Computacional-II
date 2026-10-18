@@ -22,19 +22,19 @@
 \newcommand{\ee}{\mathrm{e}}
 \newcommand{\media}[1]{\langle #1\rangle}
 
-\title{\textbf{Oscilador de Mathieu-Duffing con ruido aditivo:\\ esquemas estoc\'asticos, estad\'istica de ensamble y resonancia param\'etrica}}
-\author{Jesús David Vitola González\\[2pt] Física Computacional 2 -- Primer Examen Parcial, Punto 3}
+\title{\textbf{Oscilador de Mathieu-Duffing con ruido aditivo}}
+\author{Jesús David Vitola González\\ Nicolas Lopez Prieto \\ [2pt] Física Computacional 2 -- Primer Examen Parcial, Punto 3}
 \date{\today}
 
 \begin{document}
 
 \maketitle
 
-\section{Fenomenología y pregunta física}
+\section{Fenomenología}
 
-El oscilador de Mathieu-Duffing combina dos mecanismos no lineales. El primero es una rigidez que se modula periódicamente en el tiempo, $\omega_0^2+h\cos(\Omega t)$ (excitación paramétrica): cuando la frecuencia de modulación es cercana al doble de la frecuencia natural y la amplitud $h$ supera un umbral que depende del amortiguamiento, la posición de equilibrio se vuelve inestable y el oscilador crece de forma exponencial \cite{landau1976,nayfeh1979}. El segundo es una rigidez cúbica, $\beta x^{3}$, que con $\beta>0$ endurece el resorte y frena ese crecimiento, de modo que la amplitud se estabiliza en un valor finito.
+El oscilador de Mathieu-Duffing combina dos mecanismos no lineales. El primero es una rigidez que se modula periódicamente en el tiempo, $\omega_0^2+h\cos(\Omega t)$ cuando la frecuencia de modulación es cercana al doble de la frecuencia natural y la amplitud $h$ supera un umbral que depende del amortiguamiento, la posición de equilibrio se vuelve inestable y el oscilador crece de forma exponencial \cite{landau1976,nayfeh1979}. El segundo es una rigidez cúbica, $\beta x^{3}$, que con $\beta>0$ endurece el resorte y frena ese crecimiento, de modo que la amplitud se estabiliza en un valor finito.
 
-A ese sistema se le añade ruido blanco aditivo de intensidad $\sigma$, que representa fluctuaciones del entorno. La diferencia fundamental con el Punto 2 es que ahora una trayectoria individual no caracteriza al sistema: dos corridas con las mismas condiciones iniciales dan resultados distintos. Lo que tiene sentido estudiar son \emph{ensambles} de realizaciones: medias, varianzas y distribuciones de probabilidad.
+A ese sistema se le añade ruido blanco aditivo de intensidad $\sigma$, que representa fluctuaciones del entorno. Una trayectoria individual no caracteriza al sistema: dos corridas con las mismas condiciones iniciales dan resultados distintos. Lo que tiene sentido estudiar son ensambles de realizaciones: medias, varianzas y distribuciones de probabilidad.
 
 Las preguntas físicas y numéricas que se abordan son:
 \begin{enumerate}[label=\textbf{\arabic*.}]
@@ -68,7 +68,7 @@ con
 \end{equation}
 y $W_t$ un proceso de Wiener. En una discretización con paso $\Delta t$, el incremento es $\Delta W_n=\sqrt{\Delta t}\,\eta_n$ con $\eta_n\sim\mathcal N(0,1)$ \cite{higham2001}.
 
-\subsection{Propiedades útiles}
+\subsection{Propiedades}
 
 \paragraph{Simetría.} La ecuación~\eqref{eq:mov} es impar en $x$: si $x(t)$ es solución (con el mismo ruido, reemplazado por $-\xi$), también lo es $-x(t)$. Por eso, en un ensamble que parte de una condición inicial simétrica, se espera $\media{x}=0$ a tiempos largos.
 
@@ -77,7 +77,7 @@ y $W_t$ un proceso de Wiener. En una discretización con paso $\Delta t$, el inc
     h_c \approx 2\,\delta\,\omega_0,
     \label{eq:umbral}
 \end{equation}
-consistente con el tratamiento de Landau y Lifshitz \cite{landau1976}. Con $\delta=0.1$ y $\omega_0=1$, $h_c\approx0.2$. En los experimentos se usan $h=0.1$ (por debajo) y $h=0.5$ (por encima). Con $\beta>0$ el crecimiento se satura y aparece una respuesta \emph{subarmónica} de frecuencia $\Omega/2$, es decir, de período $2T$ con $T=2\pi/\Omega$. Como la ecuación es impar, una solución de ese tipo cumple $x(t+T)=-x(t)$: las soluciones $x(t)$ y $-x(t)$ son la misma órbita desfasada un período del forzamiento.
+consistente con el tratamiento de Landau y Lifshitz \cite{landau1976}. Con $\delta=0.1$ y $\omega_0=1$, $h_c\approx0.2$. En los experimentos se usan $h=0.1$ (por debajo) y $h=0.5$ (por encima). Con $\beta>0$ el crecimiento se satura y aparece una respuesta subarmónica de frecuencia $\Omega/2$, es decir, de período $2T$ con $T=2\pi/\Omega$. Como la ecuación es impar, una solución de ese tipo cumple $x(t+T)=-x(t)$: las soluciones $x(t)$ y $-x(t)$ son la misma órbita desfasada un período del forzamiento.
 
 \paragraph{Límite lineal con ruido.} Con $h=0$ y $\beta=0$ el modelo es un oscilador armónico amortiguado excitado por ruido blanco, con solución estacionaria gaussiana conocida \cite{gardiner2009}:
 \begin{equation}
@@ -244,7 +244,7 @@ La Figura~\ref{fig:hist} muestra el histograma de $x(t_{\max})$. Con $N=200$ se 
     \label{fig:hist}
 \end{figure}
 
-\subsection{Validación con el límite lineal (3a)}
+\subsection{Validación con el límite lineal}
 
 \begin{table}[H]
 \centering
@@ -271,7 +271,7 @@ Euler-Maruyama sobreestima la varianza, y el sesgo disminuye al reducir el paso,
     \label{fig:lineal}
 \end{figure}
 
-\subsection{Convergencia fuerte (3b)}
+\subsection{Convergencia fuerte}
 
 \begin{table}[H]
 \centering
@@ -299,7 +299,7 @@ El orden calculado con pasos consecutivos es $1.02$, $1.00$, $1.00$ y $1.03$ par
     \label{fig:fuerte}
 \end{figure}
 
-\subsection{Dependencia con la intensidad del ruido (3c)}
+\subsection{Dependencia con la intensidad del ruido }
 
 \begin{table}[H]
 \centering
@@ -331,7 +331,7 @@ $0.30$ & $0.2720$ & $0.3038$\\
     \label{fig:sigma}
 \end{figure}
 
-\subsection{Mapa estroboscópico (3d)}
+\subsection{Mapa estroboscópico}
 
 \begin{table}[H]
 \centering
@@ -357,7 +357,7 @@ Sin ruido hay exactamente dos puntos, $(x,v)=(\mp0.1103,\,\pm0.5805)$, uno el ne
     \label{fig:estrobo}
 \end{figure}
 
-\subsection{Autocorrelación y espectro (3e)}
+\subsection{Autocorrelación y espectro}
 
 \begin{table}[H]
 \centering
@@ -394,30 +394,6 @@ Por debajo del umbral, la autocorrelación oscila con período $\approx6.2$ ($\o
     \caption{Espectro de potencia de $x(t)$ (escala logarítmica en $S$), promedio de $20$ realizaciones.}
     \label{fig:esp}
 \end{figure}
-
-\section{Discusión física y numérica}
-
-\paragraph{Elección del esquema.} En el límite lineal, el sesgo de Euler-Maruyama en la varianza estacionaria es sistemático y crece con el paso (Tabla~\ref{tab:lineal}), porque el esquema inyecta varianza espuria; Heun lo evita dentro del error estadístico. Heun con $\Delta t=0.2$ (desviación $-1.3$~\%) es más preciso que Euler-Maruyama con $\Delta t=0.025$ ($+4.0$~\%) y necesita unas cuatro veces menos evaluaciones de la fuerza por unidad de tiempo ($2/0.2=10$ frente a $1/0.025=40$). En el sentido fuerte ambos tienen orden $\approx1$, pero Heun tiene una constante 6 a 7 veces menor. Esos dos resultados justifican elegir Heun.
-
-\paragraph{Ruido frente a determinismo.} Con los parámetros usados, la dinámica determinista ($\sigma=0$) es regular: decae a cero en $h=0.1$ y tiene una oscilación periódica de período $2T$ en $h=0.5$ (dos puntos en el mapa estroboscópico). Por tanto, toda irregularidad de $x(t)$ en las corridas con $\sigma>0$ se debe al ruido y no a caos determinista. No se buscó caos determinista en este modelo con $\sigma=0$.
-
-\paragraph{Dos fases de la respuesta paramétrica.} Para $h=0.5$ se combinan tres observaciones. (i) $\media{x}\to0$ y el $48$~\% de las realizaciones tiene $x>0$ en $t_{\max}$: el ensamble no conserva la fase de la oscilación. (ii) $\mathrm{Var}[x]$ oscila con el período del forzamiento. Si la fase de la oscilación estuviera distribuida uniformemente entre realizaciones, una respuesta $x=A\cos(\Omega t/2+\varphi)$ daría una varianza constante $A^{2}/2$. En cambio, si solo se visitan las dos fases $\varphi_0$ y $\varphi_0+\pi$, resulta $x^{2}=A^{2}\cos^{2}(\Omega t/2+\varphi_0)$, que oscila con período $T$. Lo observado ($0.086$ a $0.312$; con amplitud equivalente $0.55$, $A^{2}\approx0.30$) es coherente con este segundo caso, con el piso por encima de cero debido al ruido. (iii) El mapa estroboscópico determinista consiste en dos puntos simétricos. La curtosis en exceso del histograma, $-0.86$, es menor que la de una gaussiana ($0$) y se acerca, sin alcanzarla, a la de una oscilación de fase aleatoria ($-1.5$), lo que es compatible con una amplitud casi fija más ruido; con $N=200$ no es un resultado preciso. No se midió una tasa de salto entre las dos fases.
-
-\paragraph{Resonancia paramétrica y ruido.} Con $h=0.1<h_c\approx0.2$ el ruido solo excita fluctuaciones alrededor de $x=0$, y la autocorrelación pierde la memoria en pocos ciclos. Con $h=0.5>h_c$ el sistema es un oscilador autosostenido a $\Omega/2$: la autocorrelación casi no decae y el espectro tiene un pico estrecho. Esto es coherente con el umbral~\eqref{eq:umbral}, aunque solo se probaron dos valores de $h$ y no se exploró la vecindad del umbral.
-
-\paragraph{Armónico $3\omega$.} El pico pequeño en $\omega=3$ aparece solo por encima del umbral. Es compatible con el término cúbico: $x^{3}$ de una señal que oscila a $\omega\approx1$ contiene una componente en $3\omega$. Su potencia es unas $1900$ veces menor que la del pico principal.
-
-\paragraph{Respuesta al ruido por encima del umbral.} La caída de $\media{x^{2}}$ entre $\sigma=0$ y $\sigma\approx0.1$ (Tabla~\ref{tab:sigma}) indica que un ruido débil reduce la potencia media de la oscilación sostenida antes de que el ruido domine. No se determinó el mecanismo.
-
-\paragraph{Limitaciones.}
-\begin{itemize}
-    \item Los resultados provienen de un solo juego de parámetros ($\delta=0.1$, $\omega_0=1$, $\Omega=2$, $\beta=1$) y solo dos valores de $h$ ($0.1$ y $0.5$). El umbral~\eqref{eq:umbral} es una estimación lineal a primer orden y no se verificó variando $h$ cerca de $0.2$.
-    \item La resolución del espectro es $\Delta\omega=0.0153$ y el ancho del pico a $h=0.5$ ($\approx0.031$) es solo unas dos veces mayor; el ancho de línea inducido por el ruido no está bien resuelto. El periodograma se calculó sin ventana, así que hay fuga espectral.
-    \item Las realizaciones comparten un único flujo de números aleatorios; son independientes en la práctica, pero no se verificó la independencia estadística.
-    \item Los histogramas con $N=200$ son ruidosos, y los puntos del barrido en $\sigma$ usan una sola semilla cada uno.
-    \item El orden fuerte de Heun se estimó con una referencia que también es Heun (con $\Delta t_f=T/8192$, entre 4 y 64 veces más fino que los pasos comparados), lo que puede sesgar levemente a la baja el error de Heun en los pasos más finos.
-    \item No se estudió la tasa de salto entre las dos fases de la oscilación ni tiempos de primer paso.
-\end{itemize}
 
 \section{Conclusiones}
 

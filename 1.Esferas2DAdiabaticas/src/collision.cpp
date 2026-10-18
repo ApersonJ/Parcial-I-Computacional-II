@@ -12,12 +12,12 @@
 using namespace std;
 
 //---------------------------------------------------------------
-//					Instanciar todas las partículas
+//					Instanciar todas las partï¿½culas
 //---------------------------------------------------------------
 vector<particula> particula::Inicie(double L, double h, int n){
 	
 	//radio que permita que las particulas quepan en la caja
-	double Rad = L/(2*n);
+	double Rad = L/(n);
 	
 	//semilla para los numeros aleatorios
 	random_device rd;
@@ -34,7 +34,7 @@ vector<particula> particula::Inicie(double L, double h, int n){
 	for(int i=0; i<n; i++){
 		
 		sistema[i].v.Cargue( limit_v(gen), limit_v(gen) );
-		//generar partículas con un radio que quepa en la caja
+		//generar partï¿½culas con un radio que quepa en la caja
 		sistema[i].R = Rad;
 		sistema[i].m = 1; //masa normalizada
 		
@@ -43,12 +43,12 @@ vector<particula> particula::Inicie(double L, double h, int n){
         do {
             solapamiento = false;
             
-            // generar posición candidata
+            // generar posiciï¿½n candidata
             double x_cand = limit_x(gen);
             double y_cand = limit_y(gen);
             sistema[i].r.Cargue(x_cand, y_cand);
 
-            // comprobar distancia con las partículas ya aceptadas
+            // comprobar distancia con las partï¿½culas ya aceptadas
             for (int j = 0; j < i; j++) {
                 vector2D diferencia = sistema[i].r - sistema[j].r;
                 double distancia = Norma(diferencia);
@@ -111,7 +111,7 @@ double particula::coli_pared(double pared_x, double L, double h, double v_p){
         v.Cargue(-v.Getx(), v.Gety());
     }
 
-    // Pared izquierda móvil
+    // Pared izquierda mï¿½vil
     if ((r.Getx() - pared_x) <= R && v.Getx() < v_p) {
         impulso = 2.0*m*(v_p - v.Getx());
         v.Cargue(2*v_p - v.Getx(), v.Gety());

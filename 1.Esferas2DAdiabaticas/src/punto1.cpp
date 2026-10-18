@@ -49,7 +49,7 @@ void gen_frames(int n, double dt, double L, double h, double v_p, vector<particu
 	
 	//calcular el factor de empaquetamiento FEA para condicion de finalizacion
 	
-	double Rad = L/(2*n);						//radio de las particulas
+	double Rad = L/(n);						//radio de las particulas
 	double A_p = n*M_PI*Rad*Rad;				//area ocupada por las particulas
 	double A = L*h; 							//area inicial de la caja
 	double FEA_max = M_PI / (2.0*sqrt(3.0)); 	//factor de empaquetamiento maximo

@@ -19,17 +19,17 @@
 \newcommand{\dd}{\mathrm{d}}
 \newcommand{\ee}{\mathrm{e}}
 
-\title{\textbf{Oscilador de Morse Forzado y Amortiguado:\\ métodos numéricos, ruta al caos y sincronización}}
-\author{Jesús David Vitola González\\[2pt] Física Computacional 2 -- Primer Examen Parcial, Punto 2}
+\title{\textbf{Oscilador de Morse Forzado y Amortiguado}}
+\author{Jesús David Vitola González\\[2pt] Física Computacional II -- Primer Examen Parcial, Punto 2}
 \date{\today}
 
 \begin{document}
 
 \maketitle
 
-\section{Fenomenología y pregunta física}
+\section{Fenomenología}
 
-El potencial de Morse describe la vibración de una molécula diatómica mejor que el oscilador armónico, porque incluye dos rasgos que este no tiene: una pared repulsiva muy dura a distancias cortas y una región atractiva que se aplana a distancias largas, donde el enlace se rompe (disociación) \cite{morse1929}. Esa asimetría hace que el período de oscilación dependa de la energía (anarmonicidad) y que exista una energía máxima, $D$, por encima de la cual la partícula escapa.
+El potencial de Morse describe la vibración de una molécula diatómica mejor que el oscilador armónico, porque incluye dos rasgos que este no tiene: una pared repulsiva muy dura a distancias cortas y una región atractiva que se aplana a distancias largas, donde el enlace se rompe (disociación) \cite{morse1929}. Esa asimetría hace que el período de oscilación dependa de la energía y que exista una energía máxima, $D$, por encima de la cual la partícula escapa.
 
 El sistema estudiado es un oscilador de Morse al que se le añaden dos efectos: una fuerza de amortiguamiento viscoso $-\gamma v$ y una fuerza externa periódica $A\cos(\omega t)$. El amortiguamiento disipa energía, el forzamiento la inyecta, y su competencia con la no linealidad del potencial produce una dinámica rica: respuesta periódica, duplicación de período y comportamiento caótico.
 
@@ -45,7 +45,7 @@ Las preguntas físicas y numéricas que se abordan son:
 
 \subsection{Ecuación de movimiento}
 
-Sea $x$ la posición (elongación del enlace), $v=\dot x$ la velocidad y $m$ la masa reducida. El potencial de Morse es
+Sea $x$ la posición, $v=\dot x$ la velocidad y $m$ la masa reducida. El potencial de Morse es
 \begin{equation}
     P(x) = D\left(1-\ee^{-a(x-x_e)}\right)^{2},
     \label{eq:morse}
@@ -64,7 +64,7 @@ Se resuelve como sistema de primer orden en $(x,v)$:
     \dot x = v, \qquad \dot v = \frac{1}{m}\Big[F_M(x) - \gamma v + A\cos(\omega t)\Big].
 \end{equation}
 
-\subsection{Propiedades útiles}
+\subsection{Propiedades }
 
 \paragraph{Frecuencia de pequeñas oscilaciones.} Como $P''(x_e)=2Da^{2}$, cerca del equilibrio $\omega_0 = a\sqrt{2D/m}$.
 
@@ -73,7 +73,7 @@ Se resuelve como sistema de primer orden en $(x,v)$:
     \omega(E) = \omega_0\sqrt{1-\frac{E}{D}},
     \label{eq:omegaE}
 \end{equation}
-de modo que el período crece con la energía y diverge cuando $E\to D$. Los puntos de retorno satisfacen $P(x)=E$, es decir, $x_\pm = x_e - \tfrac1a\ln\!\big(1\mp\sqrt{E/D}\big)$. Estos resultados exactos sirven para validar el código.
+de modo que el período crece con la energía y diverge cuando $E\to D$. Los puntos de retorno satisfacen $P(x)=E$, es decir, $x_\pm = x_e - \tfrac1a\ln\!\big(1\mp\sqrt{E/D}\big)$.
 
 \paragraph{Balance de energía.} Con amortiguamiento y forzamiento,
 \begin{equation}
@@ -131,34 +131,19 @@ Osciladores acoplados & 5 & 1 & 0.5 & 3 & 2.6 & 0.5 / 0.501 & 0 / 0.5 & $dt=0.01
 Todos los esquemas avanzan el estado $(x,v)$ un paso $\Delta t$. Sea $\mathbf{y}=(x,v)$ y $\dot{\mathbf y}=\mathbf{f}(t,\mathbf{y})$ el campo definido por la ecuación de movimiento.
 
 \begin{itemize}
-    \item \textbf{Euler} (orden 1): $x_{n+1}=x_n+\Delta t\,v_n$, $\;v_{n+1}=v_n+\Delta t\,a_n$. La aceleración $a_n$ se evalúa con el estado anterior, de modo que $x$ y $v$ se actualizan con el mismo punto.
-    \item \textbf{Euler-Cromer} (orden 1): primero $v_{n+1}=v_n+\Delta t\,a_n$ y luego $x_{n+1}=x_n+\Delta t\,v_{n+1}$. Es la variante semi-implícita simpléctica para sistemas conservativos \cite{cromer1981}.
+    \item \textbf{Euler}: $x_{n+1}=x_n+\Delta t\,v_n$, $\;v_{n+1}=v_n+\Delta t\,a_n$. La aceleración $a_n$ se evalúa con el estado anterior, de modo que $x$ y $v$ se actualizan con el mismo punto.
+    \item \textbf{Euler-Cromer}: primero $v_{n+1}=v_n+\Delta t\,a_n$ y luego $x_{n+1}=x_n+\Delta t\,v_{n+1}$. Es la variante semi-implícita simpléctica para sistemas conservativos \cite{cromer1981}.
     \item \textbf{RK2, punto medio} (orden 2): una evaluación en $\mathbf y_n$ y otra en el punto medio, $\mathbf y_{n+1}=\mathbf y_n+\Delta t\,\mathbf f\!\left(t_n+\tfrac{\Delta t}{2},\,\mathbf y_n+\tfrac{\Delta t}{2}\mathbf k_1\right)$.
     \item \textbf{RK3, de Kutta} (orden 3): $\mathbf k_1=\mathbf f(t_n,\mathbf y_n)$, $\mathbf k_2=\mathbf f(t_n+\tfrac{\Delta t}{2},\mathbf y_n+\tfrac{\Delta t}{2}\mathbf k_1)$, $\mathbf k_3=\mathbf f(t_n+\Delta t,\mathbf y_n-\Delta t\,\mathbf k_1+2\Delta t\,\mathbf k_2)$ y $\mathbf y_{n+1}=\mathbf y_n+\tfrac{\Delta t}{6}(\mathbf k_1+4\mathbf k_2+\mathbf k_3)$.
     \item \textbf{RK4 clásico} (orden 4): $\mathbf y_{n+1}=\mathbf y_n+\tfrac{\Delta t}{6}(\mathbf k_1+2\mathbf k_2+2\mathbf k_3+\mathbf k_4)$, con cuatro evaluaciones de $\mathbf f$ por paso \cite{press2007}.
 \end{itemize}
 
-\begin{table}[H]
-\centering
-\begin{tabular}{@{}lcc@{}}
-\toprule
-Método & Orden teórico & Evaluaciones de $\mathbf f$ por paso\\
-\midrule
-Euler & 1 & 1\\
-Euler-Cromer & 1 & 1\\
-RK2 & 2 & 2\\
-RK3 & 3 & 3\\
-RK4 & 4 & 4\\
-\bottomrule
-\end{tabular}
-\caption{Métodos implementados.}
-\end{table}
 
 \subsection{Justificación}
 
 \begin{itemize}
     \item El sistema forzado y amortiguado no es hamiltoniano, así que la propiedad simpléctica de Euler-Cromer no es una ventaja garantizada. Por eso se compara con los métodos de Runge-Kutta en lugar de asumirla.
-    \item Se eligió RK4 para las corridas de física (bifurcación, Lyapunov, régimen estacionario y osciladores acoplados) porque, como se verá en la sección de resultados, su error es varios órdenes de magnitud menor que el de los demás métodos a igual $\Delta t$. En el caos, un error de integración pequeño importa más, porque cualquier perturbación se amplifica exponencialmente con $\lambda_{\max}>0$.
+    \item Se eligió RK4 para las corridas de física (bifurcación, Lyapunov, régimen estacionario y osciladores acoplados) porque, como se verá en la sección de resultados, su error es varios órdenes de magnitud menor que el de los demás métodos a igual $\Delta t$.
     \item El tiempo se calcula como $t=i\,\Delta t$ y no acumulando $t\mathrel{+}=\Delta t$, para no arrastrar error de redondeo dentro de $\cos(\omega t)$ en corridas largas.
     \item En la sección de Poincaré se toma $\Delta t=T/1000$, de modo que cada período contiene un número entero de pasos y el muestreo cae exactamente en $t=nT$.
     \item Se considera que el enlace se rompió si $x>15$ (umbral de disociación), y esa amplitud se omite en el barrido.
@@ -247,7 +232,7 @@ El espacio de fase es una curva cerrada asimétrica (Figura~\ref{fig:fase}), con
     \label{fig:fase}
 \end{figure}
 
-\subsection{Convergencia y orden de los métodos (2a)}
+\subsection{Convergencia y orden de los métodos }
 
 \begin{table}[H]
 \centering
@@ -288,7 +273,7 @@ Orden observado $p$ & 0.99 & 1.07 & 2.02 & 3.00 & 4.07\\
     \label{fig:conv}
 \end{figure}
 
-\subsection{Costo frente a precisión (2b)}
+\subsection{Costo frente a precisión}
 
 \begin{table}[H]
 \centering
@@ -307,7 +292,7 @@ RK4 & 4 & 54.78 & $5.18\times10^{-9}$\\
 \label{tab:costo}
 \end{table}
 
-\subsection{Error a lo largo de la trayectoria (2c)}
+\subsection{Error a lo largo de la trayectoria}
 
 Con $\Delta t=0.01$, el error de cada método respecto a la referencia oscila dentro de una banda en todo el intervalo $0\le t\le40$ (Figura~\ref{fig:errt}). Al final de la corrida, los errores son $1.5\times10^{-2}$ (Euler), $8.2\times10^{-5}$ (Euler-Cromer), $7.7\times10^{-5}$ (RK2), $2.7\times10^{-6}$ (RK3) y $5.2\times10^{-9}$ (RK4), coherentes con la Tabla~\ref{tab:conv}.
 
@@ -318,7 +303,7 @@ Con $\Delta t=0.01$, el error de cada método respecto a la referencia oscila de
     \label{fig:errt}
 \end{figure}
 
-\subsection{Transitorio y régimen estacionario (2d)}
+\subsection{Transitorio y régimen estacionario}
 
 Con $D=5$, $a=1$, $\gamma=0.2$, $A=2$ y $\omega=2$, el oscilador parte de $x_0=0.5$, $v_0=0$ y tarda unas decenas de unidades de tiempo en asentarse (Figura~\ref{fig:regimen}). A partir de $t\approx32$ los máximos de $x(t)$ quedan a menos de $5\times10^{-3}$ de su valor final. En el régimen estacionario:
 \begin{itemize}
@@ -334,7 +319,7 @@ Con $D=5$, $a=1$, $\gamma=0.2$, $A=2$ y $\omega=2$, el oscilador parte de $x_0=0
     \label{fig:regimen}
 \end{figure}
 
-\subsection{Diagrama de bifurcación y exponente de Lyapunov (2e)}
+\subsection{Diagrama de bifurcación y exponente de Lyapunov}
 
 La Tabla~\ref{tab:bif} resume lo que muestran, juntos, el diagrama de Poincaré (Figura~\ref{fig:bif}) y $\lambda_{\max}(A)$ (Figura~\ref{fig:lyap}). Los valores de $A$ son aproximados y se leyeron de los datos con paso $\Delta A=0.02$.
 
@@ -400,27 +385,6 @@ $e(t)$ & $1.0\times10^{-3}$ & $0.19$ & $0.13$ & $4.9\times10^{-2}$ & $2.1\times1
     \label{fig:sync}
 \end{figure}
 
-\section{Discusión física y numérica}
-
-\paragraph{Orden de los métodos.} Los órdenes observados (Tabla~\ref{tab:orden}) coinciden con los teóricos: $0.99$ y $1.07$ para los dos métodos de primer orden, $2.02$ para RK2, $3.00$ para RK3 y $4.07$ para RK4. Eso confirma que los cinco integradores están bien implementados y que, con estos pasos, el error está dominado por el truncamiento y no por el redondeo. Como el error de referencia (RK4 con $\Delta t=5\times10^{-4}$) escala como $\Delta t^{4}$, su valor estimado es del orden de $10^{-14}$; por eso los errores se pueden interpretar hasta aproximadamente $10^{-13}$.
-
-\paragraph{Euler-Cromer frente a RK2.} Con pasos grandes Euler-Cromer tiene un error menor que RK2 (en $\Delta t=0.02$: $2.1\times10^{-4}$ contra $3.4\times10^{-4}$), pero al ser de primer orden pierde la ventaja al refinar el paso: ya en $\Delta t=0.01$ ambos son casi iguales y en $\Delta t=1.25\times10^{-3}$ RK2 es siete veces más preciso. Las curvas se cruzan en la Figura~\ref{fig:conv}. Además, el sistema es disipativo y forzado, así que la propiedad simpléctica de Euler-Cromer no se aprovecha.
-
-\paragraph{Costo.} El tiempo crece más rápido que el número de evaluaciones de la fuerza: RK4 hace cuatro veces las evaluaciones de Euler pero tarda unas 13 veces más. No se investigó la causa (los tiempos dependen de la máquina y de las opciones de compilación). Aun así, la precisión se gana mucho más rápido que el costo: con $\Delta t=0.01$, RK4 es unas $3\times10^{6}$ veces más preciso que Euler a un costo unas 13 veces mayor. Para lograr con Euler un error de $5\times10^{-9}$ haría falta, por su orden 1, un paso unas $3\times10^{6}$ veces menor, es decir, del orden de $10^{10}$ pasos hasta $t=40$. Por eso RK4 es la elección razonable para este problema.
-
-\paragraph{Validación física.} Con $\gamma=A=0$ el código reproduce los resultados exactos del oscilador de Morse: conservación de la energía, período dependiente de la energía (Tabla~\ref{tab:validacion}) y puntos de retorno. Esto valida la fuerza, el potencial y el integrador antes de añadir amortiguamiento y forzamiento.
-
-\paragraph{Ruta al caos.} Al aumentar $A$ el sistema sigue una cascada de duplicación de período, $T\to2T\to4T$, hasta entrar en un régimen caótico, lo que es característico de osciladores no lineales forzados \cite{strogatz2015}. Los dos diagnósticos son consistentes: el exponente de Lyapunov se acerca a cero en cada bifurcación y se vuelve positivo donde el diagrama de Poincaré se llena de puntos. En el régimen periódico, $\lambda_{\max}\approx-0.249$ es muy cercano a $-\gamma/(2m)=-0.25$, el valor que corresponde a repartir por igual entre los dos exponentes la contracción total $-\gamma/m$ del espacio de fase. La ventana periódica de $A=3.14$ muestra que dentro de la zona caótica quedan intervalos regulares.
-
-\paragraph{Sincronización.} Dos osciladores caóticos idénticos, con condiciones iniciales distintas, se sincronizan cuando el acoplamiento es suficientemente fuerte \cite{pecora1990}. Aquí $\kappa=1.5$ basta: el error decae unos siete órdenes de magnitud entre $t=10$ y $t=80$. La diferencia $\delta=x_1-x_2$ recibe además una fuerza restauradora $-(2\kappa/m)\,\delta$ que, junto con el amortiguamiento, tiende a anularla y compite con la divergencia propia de la dinámica caótica. La tasa medida ($\approx0.22$) es del mismo orden que $\gamma/(2m)=0.25$, lo que sugiere que la disipación controla el decaimiento; esto es solo una estimación y no se verificó con un análisis lineal.
-
-\paragraph{Limitaciones.}
-\begin{itemize}
-    \item Cada valor de $A$ del diagrama de bifurcación arranca siempre de la misma condición inicial, $(0.5,\,0)$. No se barrió $A$ hacia arriba y hacia abajo, así que no se puede descartar la coexistencia de atractores (por ejemplo, el punto aislado en $A=2.24$) ni histéresis.
-    \item $\lambda_{\max}$ se calcula con 300 períodos, y sus valores fluctúan de una amplitud a otra en la zona caótica (la Figura~\ref{fig:lyap} muestra variaciones de varias centésimas). Los valores del texto son indicativos, no precisos.
-    \item Los experimentos de convergencia usan una sola condición inicial y un solo juego de parámetros.
-    \item El valor de $\kappa$ para sincronizar se probó solo en $\kappa=1.5$; no se determinó el umbral mínimo.
-\end{itemize}
 
 \section{Conclusiones}
 
