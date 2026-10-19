@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oscilador de Mathieu-Duffing con ruido: simulación interactiva</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f27;--mut:#5b6573;--ac:#c0392b;--ac2:#2a6fb0;--card:#fff;--bd:#d9dde3}
+@media (prefers-color-scheme:dark){:root{--bg:#14171c;--fg:#e8ebf0;--mut:#9aa4b2;--ac:#ff7a6b;--ac2:#6fb3ff;--card:#1d2128;--bd:#2d333c}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px Georgia,serif}
+h1{font-size:20px;margin:0;padding:10px 16px;border-bottom:3px solid var(--ac)}
+#app{display:grid;grid-template-columns:270px 1fr;gap:12px;padding:12px}
+@media(max-width:900px){#app{grid-template-columns:1fr}}
+aside,.cv{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:10px}
+aside{position:sticky;top:8px;align-self:start;max-height:calc(100vh - 16px);overflow:auto}
+@media(max-width:900px){aside{position:static;max-height:none}}
+aside label{display:grid;grid-template-columns:1fr 90px;gap:6px;margin:3px 0;align-items:center}
+aside input,aside select{width:100%;font:inherit;padding:2px 4px;background:var(--bg);color:var(--fg);border:1px solid var(--bd);border-radius:4px}
+aside h3{margin:10px 0 4px;font-size:14px;color:var(--ac2)}
+button{font:inherit;padding:4px 10px;margin:2px;border:1px solid var(--bd);background:var(--card);color:var(--fg);border-radius:6px;cursor:pointer}
+#grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:700px){#grid{grid-template-columns:1fr}}
+.cv b{font-size:13px;color:var(--mut)}canvas{width:100%;height:230px;display:block}
+#info{font:13px Consolas,monospace;color:var(--mut);margin:8px 2px}
+.mut{color:var(--mut);font-size:12px}
+</style></head><body>
+<h1>Oscilador de Mathieu-Duffing con ruido aditivo: simulación interactiva</h1>
+<div id="app">
+<aside>
+<label>Caso predefinido<select id="pre"></select></label>
+<div><button id="go">▶ / ⏸</button><button id="rs">↺ Reiniciar</button></div>
+<h3>Método</h3>
+<label>Integrador<select id="met"><option value="1">Euler-Maruyama</option><option value="2" selected>Heun estocástico</option><option value="3">RK4 (determinista, σ ignorado)</option></select></label>
+<div id="ctl"></div>
+<p class="mut">Los parámetros del modelo, σ y dt se aplican en vivo. Condiciones iniciales, N y semilla, al reiniciar. El núcleo numérico es una traducción de <code>MathieuDuffing.cpp</code>; el generador de ruido (mulberry32 + Box-Muller, con semilla) no es el <code>mt19937_64</code> del C++.</p>
+</aside>
+<main>
+<div class="cv" style="margin-bottom:10px"><b>Representación física: masa con resorte de rigidez modulada</b><canvas id="c0" style="height:210px"></canvas>
+<span class="mut">Masa principal = realización 1; puntos translúcidos = nube del ensamble. El color y grosor del resorte indican la rigidez instantánea k(t) = ω₀² + h cos(Ωt) (azul: baja, rojo: alta). Flecha naranja: empujón del ruido sobre la realización 1.</span></div>
+<div id="grid">
+<div class="cv"><b>x(t): realización 1 y media del ensamble ⟨x⟩</b><canvas id="c1"></canvas></div>
+<div class="cv"><b>Var[x](t) del ensamble (línea punteada: valor exacto si h = β = 0)</b><canvas id="c2"></canvas></div>
+<div class="cv"><b>Distribución P(x) del ensamble en este instante</b><canvas id="c3"></canvas></div>
+<div class="cv"><b>Espacio de fase (realización 1) y puntos estroboscópicos t = nT</b><canvas id="c4"></canvas></div>
+</div><div id="info"></div></main></div>
+<script>
+/*CORE: traduccion de MathieuDuffing.cpp*/
+function ac(t,x,v,P){return -P.d*v-(P.w0*P.w0+P.h*Math.cos(P.W*t))*x-P.b*x*x*x;} // calcularAceleracion (parte determinista)
+function rk4(s,t,dt,P){var x=s.x,v=s.v; // MuevaseRK4
+  var K1x=v,K1v=ac(t,x,v,P),x2=x+dt/2*K1x,v2=v+dt/2*K1v,K2x=v2,K2v=ac(t+dt/2,x2,v2,P),
+  x3=x+dt/2*K2x,v3=v+dt/2*K2v,K3x=v3,K3v=ac(t+dt/2,x3,v3,P),x4=x+dt*K3x,v4=v+dt*K3v,K4x=v4,K4v=ac(t+dt,x4,v4,P);
+  s.x=x+dt/6*(K1x+2*K2x+2*K3x+K4x);s.v=v+dt/6*(K1v+2*K2v+2*K3v+K4v);}
+function em(s,t,dt,dW,P){var a=ac(t,s.x,s.v,P);s.x+=dt*s.v;s.v+=a*dt+P.s*dW;} // MuevaseEulerMaruyama
+function heun(s,t,dt,dW,P){var a1=ac(t,s.x,s.v,P),xp=s.x+dt*s.v,vp=s.v+a1*dt+P.s*dW,a2=ac(t+dt,xp,vp,P); // MuevaseHeun
+  s.x+=0.5*dt*(s.v+vp);s.v+=0.5*dt*(a1+a2)+P.s*dW;}
+/*ENDCORE*/
+function Rng(seed){var a=seed>>>0,c=null;this.u=function(){a=(a+0x6D2B79F5)>>>0;var t=a;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296};
+  this.n=function(){if(c!==null){var r=c;c=null;return r}var u=this.u()||1e-12,v=this.u(),m=Math.sqrt(-2*Math.log(u));c=m*Math.sin(6.283185307179586*v);return m*Math.cos(6.283185307179586*v)}}
+
+var $=function(i){return document.getElementById(i)};
+var CT=[['d','Amortiguamiento δ',0.1],['w0','Frecuencia natural ω₀',1],['h','Modulación h',0.5],['W','Frecuencia Ω',2],['b','Rigidez cúbica β',1],['s','Ruido σ',0.1],
+['x0','x0',0.5],['v0','v0',0],['dt','Paso dt',0.01],['N','Realizaciones N',300],['seed','Semilla',12345],['spf','Pasos por cuadro',8]];
+CT.forEach(function(c){var l=document.createElement('label');l.innerHTML=c[1]+'<input id="'+c[0]+'" type="number" step="any" value="'+c[2]+'">';$('ctl').appendChild(l)});
+var B={d:.1,w0:1,h:.5,W:2,b:1,s:.1,x0:.5,v0:0,dt:.01,N:300,seed:12345,met:2};
+function pr(o){var r={};for(var k in B)r[k]=B[k];for(var k in o)r[k]=o[k];return r}
+var PRE={
+'Caso principal: sobre el umbral (h=0,5; σ=0,2)':pr({s:.2,N:200}),
+'Sobre el umbral, σ pequeño (h=0,5; σ=0,05)':pr({s:.05}),
+'Bajo el umbral: el ruido solo excita (h=0,1; σ=0,1)':pr({h:.1,x0:.1}),
+'Control determinista (σ=0, RK4)':pr({s:0,N:1,met:3}),
+'Validación lineal (h=β=0): Var[x]=σ²/(2δω₀²)':pr({d:.5,h:0,b:0,s:.5,x0:0,dt:.02,N:400}),
+'Euler-Maruyama con dt grande: sesgo en Var[x]':pr({d:.5,h:0,b:0,s:.5,x0:0,dt:.25,N:400,met:1,spf:2}),
+'Misma validación con Heun y dt grande':pr({d:.5,h:0,b:0,s:.5,x0:0,dt:.25,N:400,met:2,spf:2}),
+'Divergencia (β=0 con h sobre el umbral)':pr({b:0,s:.02,N:50})};
+Object.keys(PRE).forEach(function(n){var o=document.createElement('option');o.textContent=n;$('pre').appendChild(o)});
+function aplicar(n){var q=PRE[n];for(var k in q){$(k=='met'?'met':k).value=q[k]}reset();}
+function leer(){var P={};CT.forEach(function(c){P[c[0]]=parseFloat($(c[0]).value)});P.met=+$('met').value;return P;}
+
+var R,S,i,tb,ib,ldt,run=true,msg='',D={},PC=[],kick=0,NMAX=4000;
+function reset(){var P=leer();R=new Rng(P.seed);S=[];for(var j=0;j<Math.max(1,Math.round(P.N));j++)S.push({x:P.x0,v:P.v0});
+  i=0;tb=0;ib=0;ldt=P.dt;msg='';D={t:[],x:[],m:[],v:[]};PC=[];kick=0;}
+function stats(){var n=S.length,m=0,q=0;S.forEach(function(s){m+=s.x});m/=n;S.forEach(function(s){q+=(s.x-m)*(s.x-m)});return[m,n>1?q/(n-1):0]}
+function frame(){var P=leer();
+  if(run&&!msg&&P.dt>0){for(var n=0;n<P.spf;n++){
+    if(P.dt!==ldt){tb=tb+(i-ib)*ldt;ib=i;ldt=P.dt;}
+    var t=tb+(i-ib)*P.dt,T=2*Math.PI/P.W;
+    for(var j=0;j<S.length;j++){var s=S[j];
+      if(P.met==3)rk4(s,t,P.dt,P);else{var dW=R.n()*Math.sqrt(P.dt);if(j==0)kick=P.s*dW/P.dt;(P.met==1?em:heun)(s,t,P.dt,dW,P)}}
+    i++;var t2=tb+(i-ib)*P.dt;
+    if(Math.floor(t2/T)>Math.floor(t/T))PC.push([S[0].x,S[0].v]);
+    if(PC.length>700)PC.shift();
+    if(i%Math.max(1,Math.round(0.02/P.dt))==0){var st=stats();D.t.push(t2);D.x.push(S[0].x);D.m.push(st[0]);D.v.push(st[1]);if(D.t.length>NMAX)for(var q in D)D[q].shift()}
+    if(!(Math.abs(S[0].x)<1e6)){msg='LA TRAYECTORIA DIVERGE (|x| > 10⁶): con β = 0 y h sobre el umbral x crece sin límite. Aumente β o reduzca h.';break}}}
+  dibujar(P);requestAnimationFrame(frame);}
+
+function ctx(id){var c=$(id),r=window.devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;
+  if(c.width!=w*r){c.width=w*r;c.height=h*r}var g=c.getContext('2d');g.setTransform(r,0,0,r,0,0);g.clearRect(0,0,w,h);return[g,w,h]}
+function col(n){return getComputedStyle(document.body).getPropertyValue(n)}
+function chart(id,Sr,o){var q=ctx(id),g=q[0],W=q[1],H=q[2],L=46,B_=20,T=6,Rr=8,x0=1e99,x1=-1e99,y0=1e99,y1=-1e99;
+  Sr.forEach(function(s){for(var j=0;j<s.x.length;j++){x0=Math.min(x0,s.x[j]);x1=Math.max(x1,s.x[j]);y0=Math.min(y0,s.y[j]);y1=Math.max(y1,s.y[j])}});
+  if(o.zero)y0=Math.min(y0,0);if(!(x1>x0)){x0-=1;x1+=1}if(!(y1>y0)){y0-=1;y1+=1}var pm=(y1-y0)*.06;y1+=pm;if(!o.zero)y0-=pm;
+  var mx=function(x){return L+(x-x0)/(x1-x0)*(W-L-Rr)},my=function(y){return H-B_-(y-y0)/(y1-y0)*(H-B_-T)};
+  g.strokeStyle=col('--bd');g.fillStyle=col('--mut');g.font='11px sans-serif';g.lineWidth=1;
+  for(var k=0;k<=4;k++){var yy=y0+(y1-y0)*k/4,xx=x0+(x1-x0)*k/4;g.beginPath();g.moveTo(L,my(yy));g.lineTo(W-Rr,my(yy));g.stroke();
+    g.fillText(yy.toPrecision(2),2,my(yy)+3);g.fillText(xx.toPrecision(3),mx(xx)-12,H-5)}
+  Sr.forEach(function(s){g.fillStyle=g.strokeStyle=s.c;g.setLineDash(s.dash?[6,5]:[]);
+    if(s.pt){for(var j=0;j<s.x.length;j++)g.fillRect(mx(s.x[j])-1.5,my(s.y[j])-1.5,3,3)}
+    else if(s.bw){for(var j=0;j<s.x.length;j++)g.fillRect(mx(s.x[j]-s.bw/2),my(s.y[j]),Math.max(1,mx(s.x[j]+s.bw/2)-mx(s.x[j]-s.bw/2)-1),my(0)-my(s.y[j]))}
+    else{g.beginPath();for(var j=0;j<s.x.length;j++)j?g.lineTo(mx(s.x[j]),my(s.y[j])):g.moveTo(mx(s.x[j]),my(s.y[j]));g.lineWidth=s.lw||1.5;g.stroke()}
+    g.setLineDash([])})}
+function resorte(g,x1,y1,x2,y2,n,amp){var dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy)||1,nx=-dy/L,ny=dx/L;g.beginPath();g.moveTo(x1,y1);
+  for(var j=1;j<=n;j++){var f=(j-.5)/n,sg=j%2?1:-1;g.lineTo(x1+dx*f+nx*amp*sg,y1+dy*f+ny*amp*sg)}g.lineTo(x2,y2);g.stroke()}
+function fisico(P,t){var q=ctx('c0'),g=q[0],W=q[1],H=q[2],K=Math.min(150,W*.2),X0=W*.42,y=H*.4,hw=24,
+  kef=P.w0*P.w0+P.h*Math.cos(P.W*t),f=Math.abs(P.h)>1e-9?(kef-(P.w0*P.w0-Math.abs(P.h)))/(2*Math.abs(P.h)):.5;f=Math.max(0,Math.min(1,f));
+  var xm=function(x){return X0+Math.max(-2.4,Math.min(2.4,x))*K};
+  g.fillStyle=col('--mut');g.fillRect(14,y-45,8,90);g.strokeStyle=col('--mut');g.lineWidth=1;for(var j=-45;j<45;j+=10){g.beginPath();g.moveTo(14,y+j+10);g.lineTo(6,y+j+18);g.stroke()}
+  g.setLineDash([3,4]);g.beginPath();g.moveTo(X0,y-55);g.lineTo(X0,y+55);g.stroke();g.setLineDash([]);
+  S.slice(0,120).forEach(function(s,j){g.fillStyle='rgba(217,140,58,.28)';g.beginPath();g.arc(xm(s.x),H*.82+((j*37)%24-12),5,0,7);g.fill()});
+  var xc=xm(S[0].x);g.strokeStyle='hsl('+(240-240*f)+',70%,50%)';g.lineWidth=1.5+3*f;resorte(g,22,y,xc-hw,y,14,8+8*f);
+  g.fillStyle='#5b7fa6';g.fillRect(xc-hw,y-hw,2*hw,2*hw);g.fillStyle='#fff';g.font='12px sans-serif';g.fillText('x',xc-3,y+4);
+  var L2=Math.max(-70,Math.min(70,kick*15));if(Math.abs(L2)>3){g.strokeStyle=g.fillStyle='#e67e22';g.lineWidth=3;g.beginPath();g.moveTo(xc,y-hw-12);g.lineTo(xc+L2,y-hw-12);g.stroke();
+    var sg=L2>0?1:-1;g.beginPath();g.moveTo(xc+L2,y-hw-12);g.lineTo(xc+L2-9*sg,y-hw-17);g.lineTo(xc+L2-9*sg,y-hw-7);g.fill()}
+  g.fillStyle=col('--fg');g.font='12px sans-serif';g.fillText('k(t) = ω₀² + h cos(Ωt) = '+kef.toFixed(2)+'     x = '+S[0].x.toFixed(3)+'     (resorte con rigidez cúbica β = '+P.b+', amortiguamiento δ = '+P.d+')',8,H-4);
+  g.fillText('nube del ensamble ('+S.length+')',W*.42-50,H*.82-26)}
+function dibujar(P){var t=tb+(i-ib)*P.dt;fisico(P,t);var cl1=col('--ac'),cl2=col('--ac2'),st=stats();
+  chart('c1',[{x:D.t,y:D.x,c:cl2,lw:1},{x:D.t,y:D.m,c:cl1,lw:2}],{});
+  var S2=[{x:D.t,y:D.v,c:cl1}];if(P.h==0&&P.b==0&&D.t.length)S2.push({x:[D.t[0],D.t[D.t.length-1]],y:[P.s*P.s/(2*P.d*P.w0*P.w0),P.s*P.s/(2*P.d*P.w0*P.w0)],c:'#2e9e5b',dash:1});
+  chart('c2',S2,{zero:1});
+  var xs=S.map(function(s){return s.x}),lo=Math.min.apply(null,xs),hi=Math.max.apply(null,xs),nb=36,bw=(hi-lo)/nb||1,cnt=[];for(var j=0;j<nb;j++)cnt.push(0);
+  xs.forEach(function(x){cnt[Math.min(nb-1,Math.floor((x-lo)/bw))]++});
+  chart('c3',[{x:cnt.map(function(c,j){return lo+(j+.5)*bw}),y:cnt.map(function(c){return c/(xs.length*bw)}),c:cl2,bw:bw}],{zero:1});
+  var k0=Math.max(0,D.t.length-2500);var xv=[],vv=[];
+  chart('c4',[{x:PC.map(function(p){return p[0]}),y:PC.map(function(p){return p[1]}),c:cl1,pt:1}].concat([]),{});
+  $('info').textContent='t = '+t.toFixed(2)+'   ⟨x⟩ = '+st[0].toFixed(4)+'   Var[x] = '+st[1].toFixed(4)+'   N = '+S.length+'   semilla = '+P.seed+'   T = 2π/Ω = '+(2*Math.PI/P.W).toFixed(3)+
+   (P.h!=0&&P.b==0&&P.d>0?'':'')+'   umbral lineal h_c ≈ 2δω₀ = '+(2*P.d*P.w0).toFixed(3)+(msg?'   — '+msg:'');}
+$('go').onclick=function(){run=!run};$('rs').onclick=reset;$('pre').onchange=function(){aplicar($('pre').value)};
+aplicar(Object.keys(PRE)[0]);requestAnimationFrame(frame);
+</script></body></html>

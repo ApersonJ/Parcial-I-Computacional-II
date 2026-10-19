@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Compresión adiabática de un gas 2D · Discos duros</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1c2330;--mut:#667085;--bd:#dde1e8;--acc:#2563eb;color-scheme:light;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10141c;--card:#181e29;--fg:#e6e9ef;--mut:#98a2b3;--bd:#2a3342;--acc:#6ea0ff;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#10141c;--card:#181e29;--fg:#e6e9ef;--mut:#98a2b3;--bd:#2a3342;--acc:#6ea0ff;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{padding:20px 20px 4px;max-width:1280px;margin:auto}
+h1{font-size:1.5rem;margin:0}h2{font-size:1.1rem;margin:0 0 10px}
+.sub{color:var(--mut);margin:4px 0 0}
+main{max-width:1280px;margin:auto;padding:12px 20px 40px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px}
+.top{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:900px){.top{grid-template-columns:1fr}}
+#cv{display:block;width:100%;height:auto;margin:auto;border-radius:8px;background:#0e1420}
+.bar{height:6px;background:var(--bd);border-radius:3px;margin:10px 0}.bar i{display:block;height:100%;width:0;background:var(--acc);border-radius:3px}
+.row{display:grid;grid-template-columns:170px 1fr 82px;gap:8px;align-items:center;margin:6px 0}
+@media(max-width:480px){.row{grid-template-columns:1fr 82px}.row label{grid-column:1/3}}
+.row label{font-size:.86rem}
+input[type=range]{width:100%;accent-color:var(--acc)}
+input[type=number]{width:100%;padding:5px 6px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--fg);font:inherit}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+button{padding:8px 14px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--fg);font:inherit;cursor:pointer}
+button.p{background:var(--acc);border-color:var(--acc);color:#fff}
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.8rem;background:var(--bd)}
+.leg{font-size:.82rem;color:var(--mut);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.grad{width:110px;height:10px;border-radius:5px;background:linear-gradient(90deg,hsl(220,85%,50%),hsl(140,85%,50%),hsl(60,85%,50%),hsl(0,85%,50%))}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:16px 0}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px 12px}
+.stat span{display:block;color:var(--mut);font-size:.78rem}.stat strong{font-size:1.05rem;font-variant-numeric:tabular-nums}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:16px;margin-top:12px}
+.ch{height:320px;position:relative}
+small{color:var(--mut)}
+</style>
+</head>
+<body>
+<header>
+<h1>Compresión adiabática de un gas 2D</h1>
+<p class="sub">Discos duros en una caja con pared izquierda móvil: la misma lógica de <code>gen_frames</code>, <code>coli_pared</code> y <code>coli_particula</code> ejecutándose en el navegador.</p>
+</header>
+<main>
+<section class="top">
+<div class="card">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+<h2 style="margin:0">Caja y partículas</h2><span class="badge" id="phase">Listo</span></div>
+<canvas id="cv" width="1000" height="640"></canvas>
+<div class="bar"><i id="prog"></i></div>
+<div class="leg"><span>Rapidez:</span><span>lenta</span><div class="grad"></div><span>rápida</span><span style="margin-left:auto">pared móvil en rojo</span></div>
+<div class="btns"><button class="p" id="go">▶ Iniciar</button><button id="stp">Paso</button><button id="rst">Reiniciar</button></div>
+</div>
+<div class="card">
+<h2>Parámetros</h2>
+<div id="ctl"></div>
+<div class="row"><label>Radio automático R = L/(2n)</label><span></span><input type="checkbox" id="auto"></div>
+<small>Cambiar n, L, h, R, velocidad inicial o masa reinicia el gas. El resto (v<sub>p</sub>, dt, k<sub>B</sub>, ventana de presión, margen, velocidad de simulación) se aplica en caliente. La simulación termina cuando el área llega a A<sub>partículas</sub>/FEA<sub>máx</sub>; con v<sub>p</sub> = 0 el gas queda en equilibrio sin comprimirse.</small>
+</div>
+</section>
+
+<section class="stats" id="stats"></section>
+
+<h2 style="margin-top:8px">Dinámica vs tiempo</h2>
+<section class="charts">
+<div class="card"><div class="ch"><canvas id="cE"></canvas></div></div>
+<div class="card"><div class="ch"><canvas id="cT"></canvas></div></div>
+<div class="card"><div class="ch"><canvas id="cP"></canvas></div></div>
+</section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const DEF=[['n','Número de partículas n',2,300,1,60],['L','Ancho de la caja L (m)',2,30,0.5,10],['h','Alto de la caja h (m)',2,30,0.5,6],['R','Radio de las partículas R (m)',0.02,1,0.01,0.15],['vmax','Velocidad inicial máx. por eje (m/s)',0.1,5,0.1,1],['m','Masa m',0.1,5,0.1,1],['vp','Velocidad de la pared v_p (m/s)',0,3,0.05,0.5],['dt','Paso de tiempo dt (s)',0.001,0.1,0.001,0.02],['kB','Constante k_B',0.1,3,0.1,1],['dtm','Ventana de medición de P (s)',0.1,5,0.1,1],['fea','Margen de FEA (FEA_máx = π/(2√3) − margen)',0,0.5,0.01,0.2],['save','Pasos entre muestras guardadas',1,50,1,10],['speed','Pasos de simulación por cuadro',1,60,1,4]];
+const RST=['n','L','h','R','vmax','m'];
+$('ctl').innerHTML=DEF.map(d=>`<div class="row"><label>${d[1]}</label><input type="range" id="${d[0]}" min="${d[2]}" max="${d[3]}" step="${d[4]}" value="${d[5]}"><input type="number" id="${d[0]}n" min="${d[2]}" max="${d[3]}" step="${d[4]}" value="${d[5]}"></div>`).join('');
+$('stats').innerHTML=[['t','Tiempo t (s)'],['wall','Pared x (m)'],['A','Área A (m²)'],['fea','Empaquetamiento FEA'],['E','Energía E'],['T','Temperatura T'],['P','Presión P'],['TA','T·A (≈ cte si γ = 2)']].map(s=>`<div class="stat"><span>${s[1]}</span><strong id="s_${s[0]}">–</strong></div>`).join('');
+
+function P(){const o={};DEF.forEach(d=>o[d[0]]=+$(d[0]).value);return o}
+function setVal(id,v){$(id).value=v;$(id+'n').value=v}
+let PR=P();
+const G={n:0,L:0,h:0,R:0,m:1,x:null,y:null,vx:null,vy:null,wall:0,A:0,Ap:0,t:0,E:0,T:0,P:0,imp:0,tm:0,cnt:0,ts:[],Es:[],Ts:[],Ps:[],done:false,running:false,W:1000,H:640,sc:1,ox:30,oy:30};
+const feaMax=()=>Math.PI/(2*Math.sqrt(3))-PR.fea;
+
+function autoR(){const a=$('auto').checked;$('R').disabled=$('Rn').disabled=a;if(a)setVal('R',Math.min(1,Math.max(0.02,+(PR.L/(2*PR.n)).toFixed(3))))}
+function energy(){let E=0;for(let i=0;i<G.n;i++)E+=0.5*G.m*(G.vx[i]**2+G.vy[i]**2);return E}
+function reset(){
+ PR=P();const{n,L,h}=PR;G.n=n;G.L=L;G.h=h;G.m=PR.m;G.R=$('auto').checked?L/(2*n):PR.R;
+ const R=G.R;G.x=new Float64Array(n);G.y=new Float64Array(n);G.vx=new Float64Array(n);G.vy=new Float64Array(n);
+ for(let i=0;i<n;i++){
+  G.vx[i]=(Math.random()*2-1)*PR.vmax;G.vy[i]=(Math.random()*2-1)*PR.vmax;
+  let ok,tries=0;
+  do{ok=true;G.x[i]=R+Math.random()*Math.max(0,L-2*R);G.y[i]=R+Math.random()*Math.max(0,h-2*R);
+   for(let j=0;j<i;j++){if(Math.hypot(G.x[i]-G.x[j],G.y[i]-G.y[j])<2*R){ok=false;break}}}while(!ok&&++tries<5000);
+ }
+ G.wall=0;G.A=L*h;G.Ap=n*Math.PI*R*R;G.t=0;G.cnt=0;G.P=0;G.imp=0;G.tm=0;
+ G.E=energy();G.T=G.E/(n*PR.kB);G.ts=[];G.Es=[];G.Ts=[];G.Ps=[];
+ G.done=G.A<=G.Ap/feaMax();
+ // geometría del lienzo
+ G.sc=Math.min(940/L,760/h);G.W=Math.round(L*G.sc+60);G.H=Math.round(h*G.sc+60);
+ $('cv').width=G.W;$('cv').height=G.H;$('cv').style.maxWidth=G.W+'px';
+ refresh(true);
+}
+function step(){
+ const{vp,dt,kB,dtm,save}=PR,{n,L,h,R,m,x,y,vx,vy}=G;
+ G.wall+=vp*dt;G.A=(L-G.wall)*h;
+ for(let i=0;i<n;i++){x[i]+=vx[i]*dt;y[i]+=vy[i]*dt}
+ const D=4*R*R;
+ for(let i=0;i<n;i++){
+  // coli_pared
+  if(L-x[i]<=R&&vx[i]>0)vx[i]=-vx[i];
+  if(x[i]-G.wall<=R&&vx[i]<vp){G.imp+=2*m*(vp-vx[i]);vx[i]=2*vp-vx[i]}
+  if(h-y[i]<=R&&vy[i]>0)vy[i]=-vy[i];
+  if(y[i]<=R&&vy[i]<0)vy[i]=-vy[i];
+  // coli_particula
+  for(let j=i+1;j<n;j++){
+   const dx=x[i]-x[j],dy=y[i]-y[j],d2=dx*dx+dy*dy;
+   if(d2<=D&&d2>0){const d=Math.sqrt(d2),nx=dx/d,ny=dy/d,vrn=(vx[i]-vx[j])*nx+(vy[i]-vy[j])*ny;
+    if(vrn<0){const J=-2*vrn/(2/m),a=J/m;vx[i]+=a*nx;vy[i]+=a*ny;vx[j]-=a*nx;vy[j]-=a*ny}}
+  }
+ }
+ G.E=energy();G.T=G.E/(n*kB);G.tm+=dt;
+ if(G.tm>=dtm){G.P=G.imp/(h*G.tm);G.imp=0;G.tm=0}
+ if(G.cnt%save===0){G.ts.push(G.t);G.Es.push(G.E);G.Ts.push(G.T);G.Ps.push(G.P)}
+ G.cnt++;G.t+=dt;
+ if(G.A<=G.Ap/feaMax()||G.wall>=L)G.done=true;
+}
+
+// ---- Dibujo
+const cv=$('cv'),ctx=cv.getContext('2d');
+function draw(){
+ const{sc,L,h,n,R}=G;if(!n)return;const ox=30,oy=30,Wd=cv.width,Hd=cv.height;
+ ctx.fillStyle='#0e1420';ctx.fillRect(0,0,Wd,Hd);
+ const bx=ox,by=oy,bw=L*sc,bh=h*sc,wx=bx+G.wall*sc;
+ ctx.fillStyle='rgba(214,39,40,.12)';ctx.fillRect(bx,by,G.wall*sc,bh);
+ ctx.strokeStyle='#9aa4b5';ctx.lineWidth=2;ctx.strokeRect(bx,by,bw,bh);
+ const vr=Math.sqrt(2*G.E/(n*G.m))||1;
+ for(let i=0;i<n;i++){
+  const s=Math.hypot(G.vx[i],G.vy[i])/vr,hue=220-220*Math.min(1,s/2.2);
+  ctx.fillStyle=`hsl(${hue},85%,52%)`;ctx.beginPath();ctx.arc(bx+G.x[i]*sc,by+bh-G.y[i]*sc,Math.max(1.5,R*sc),0,6.2832);ctx.fill();
+ }
+ ctx.strokeStyle='#ff3b3b';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(wx,by);ctx.lineTo(wx,by+bh);ctx.stroke();
+}
+
+// ---- Gráficas
+const css=getComputedStyle(document.documentElement);Chart.defaults.color=css.getPropertyValue('--fg').trim()||'#888';Chart.defaults.borderColor='rgba(128,128,128,.25)';
+const mk=(id,yt,col)=>new Chart($(id),{type:'line',data:{datasets:[{label:yt,borderColor:col,data:[],pointRadius:0,borderWidth:1.5}]},options:{animation:false,parsing:false,normalized:true,maintainAspectRatio:false,scales:{x:{type:'linear',min:0,title:{display:true,text:'t (s)'}},y:{title:{display:true,text:yt}}},plugins:{legend:{display:false},title:{display:true,text:yt+' vs tiempo'}}}});
+const cE=mk('cE','Energía total E','#d62728'),cT=mk('cT','Temperatura T','#2ca02c'),cP=mk('cP','Presión P','#1f77b4');
+function drawCharts(){
+ const n=G.ts.length,st=Math.max(1,Math.ceil(n/1500));
+ [[cE,G.Es],[cT,G.Ts],[cP,G.Ps]].forEach(([c,a])=>{const o=[];for(let i=0;i<n;i+=st)o.push({x:G.ts[i],y:a[i]});c.data.datasets[0].data=o;c.update('none')});
+}
+let lastC=0;
+const f=(v,d=3)=>Number.isFinite(v)?v.toFixed(d):'–';
+function refresh(force){
+ draw();
+ $('s_t').textContent=f(G.t,2);$('s_wall').textContent=f(G.wall,2);$('s_A').textContent=f(G.A,2);$('s_fea').textContent=f(G.Ap/G.A,3);
+ $('s_E').textContent=f(G.E);$('s_T').textContent=f(G.T);$('s_P').textContent=f(G.P);$('s_TA').textContent=f(G.T*G.A);
+ $('phase').textContent=G.done?(G.t>0?'Compresión terminada':'Ya en el límite de empaquetamiento'):G.running?'Comprimiendo':'Listo';
+ const lim=G.Ap/feaMax(),fr=G.L*G.h>lim?(G.wall*G.h)/(G.L*G.h-lim):1;
+ $('prog').style.width=Math.min(1,G.done?1:fr)*100+'%';
+ const t=performance.now();if(force||t-lastC>150){lastC=t;drawCharts()}
+}
+function tick(){
+ if(G.running&&!G.done){const t0=performance.now();let k=0;while(!G.done&&k<PR.speed&&performance.now()-t0<14){step();k++}}
+ if(G.done&&G.running){G.running=false;$('go').textContent='▶ Iniciar';refresh(true)}
+ refresh();requestAnimationFrame(tick);
+}
+
+// ---- Eventos
+DEF.forEach(d=>{const id=d[0],ap=v=>{v=Math.min(d[3],Math.max(d[2],isNaN(v)?d[5]:v));setVal(id,v);PR=P();if(RST.includes(id)){autoR();reset()}else refresh(true)};
+ $(id).addEventListener('input',e=>ap(+e.target.value));$(id+'n').addEventListener('change',e=>ap(+e.target.value))});
+$('auto').addEventListener('change',()=>{PR=P();autoR();reset()});
+$('go').onclick=()=>{if(G.running){G.running=false;$('go').textContent='▶ Iniciar';return}
+ if(G.done)reset();if(G.done)return;G.running=true;$('go').textContent='⏸ Pausa'};
+$('stp').onclick=()=>{G.running=false;$('go').textContent='▶ Iniciar';if(!G.done){step();refresh(true)}};
+$('rst').onclick=()=>{G.running=false;$('go').textContent='▶ Iniciar';reset()};
+autoR();reset();tick();
+</script>
+</body>
+</html>

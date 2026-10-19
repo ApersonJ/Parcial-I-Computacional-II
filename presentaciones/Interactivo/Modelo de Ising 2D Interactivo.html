@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Modelo de Ising 2D · Simulación interactiva</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1c2330;--mut:#667085;--bd:#dde1e8;--acc:#2563eb;--up:#d62728;--dn:#1f77b4;color-scheme:light;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10141c;--card:#181e29;--fg:#e6e9ef;--mut:#98a2b3;--bd:#2a3342;--acc:#6ea0ff;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#10141c;--card:#181e29;--fg:#e6e9ef;--mut:#98a2b3;--bd:#2a3342;--acc:#6ea0ff;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{padding:20px 20px 4px;max-width:1280px;margin:auto}
+h1{font-size:1.5rem;margin:0}h2{font-size:1.1rem;margin:0 0 10px}
+.sub{color:var(--mut);margin:4px 0 0}
+main{max-width:1280px;margin:auto;padding:12px 20px 40px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px}
+.top{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:16px;align-items:start}
+@media(max-width:900px){.top{grid-template-columns:1fr}}
+#cv{width:100%;aspect-ratio:1;display:block;border-radius:8px;background:#000;image-rendering:pixelated}
+.bar{height:6px;background:var(--bd);border-radius:3px;margin:10px 0}.bar i{display:block;height:100%;width:0;background:var(--acc);border-radius:3px}
+.row{display:grid;grid-template-columns:150px 1fr 82px;gap:8px;align-items:center;margin:7px 0}
+@media(max-width:480px){.row{grid-template-columns:1fr 82px}.row label{grid-column:1/3}}
+.row label{font-size:.88rem}
+input[type=range]{width:100%;accent-color:var(--acc)}
+input[type=number],select{width:100%;padding:5px 6px;border:1px solid var(--bd);border-radius:6px;background:var(--bg);color:var(--fg);font:inherit}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+button{padding:8px 14px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--fg);font:inherit;cursor:pointer}
+button.p{background:var(--acc);border-color:var(--acc);color:#fff}
+.badge{display:inline-block;padding:2px 10px;border-radius:99px;font-size:.8rem;background:var(--bd)}
+.leg{font-size:.82rem;color:var(--mut);display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.leg b{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:16px 0}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px 12px}
+.stat span{display:block;color:var(--mut);font-size:.78rem}.stat strong{font-size:1.05rem;font-variant-numeric:tabular-nums}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:16px;margin-top:16px}
+.ch{height:320px;position:relative}
+.sw{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+.sw label{font-size:.78rem;color:var(--mut)}
+small{color:var(--mut)}
+</style>
+</head>
+<body>
+<header>
+<h1>Modelo de Ising 2D</h1>
+<p class="sub">Metropolis sobre una red L×L con condiciones periódicas: la misma lógica de la clase <code>Ising2D</code> (Inicie, MonteCarlo, Muestreo) ejecutándose en el navegador.</p>
+</header>
+<main>
+<section class="top">
+<div class="card">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+<h2 style="margin:0">Red de spines</h2><span class="badge" id="phase">Detenido</span></div>
+<canvas id="cv" width="720" height="720"></canvas>
+<div class="bar"><i id="prog"></i></div>
+<div class="leg"><span><b style="background:var(--up)"></b>spin +1</span><span><b style="background:var(--dn)"></b>spin −1</span><span id="tc"></span></div>
+<div class="btns">
+<button class="p" id="go">▶ Iniciar</button><button id="stp">Paso (1 MCS)</button><button id="rst">Reiniciar</button>
+</div>
+</div>
+<div class="card">
+<h2>Parámetros</h2>
+<div id="ctl"></div>
+<div class="row"><label>Estado inicial</label><select id="init"><option value="ord">Todos +1 con invertidos</option><option value="rand">Aleatorio (50 %)</option></select><span></span></div>
+<small>L, invertidos y estado inicial reinician la red. T, J, h y k<sub>B</sub> se aplican en caliente (y reinician el muestreo).</small>
+<h2 style="margin-top:16px">Barrido de temperatura</h2>
+<div class="sw"><div><label>T mín</label><input type="number" id="t0" value="1" step="0.1" min="0.1"></div><div><label>T máx</label><input type="number" id="t1" value="4" step="0.1"></div><div><label>Puntos</label><input type="number" id="tn" value="12" min="2" max="60"></div></div>
+<div class="btns"><button id="swp">Ejecutar barrido</button><button id="clr">Borrar resultados</button></div>
+<small>Cada T hace termalización + muestreo y añade un punto a C<sub>v</sub> y χ.</small>
+</div>
+</section>
+
+<section class="stats" id="stats"></section>
+
+<h2 style="margin-top:8px">Dinámica vs pasos de Monte Carlo</h2>
+<label style="font-size:.9rem"><input type="checkbox" id="norm"> Normalizar E y M por spin</label>
+<section class="charts">
+<div class="card"><div class="ch"><canvas id="cE"></canvas></div></div>
+<div class="card"><div class="ch"><canvas id="cM"></canvas></div></div>
+<div class="card"><div class="ch"><canvas id="cI"></canvas></div></div>
+</section>
+<h2 style="margin-top:22px">Calor específico y susceptibilidad vs temperatura</h2>
+<div class="btns"><button class="p" id="swp2">Ejecutar barrido de T (rango en el panel de arriba)</button><small>El rombo vacío es el valor en curso para la T actual; los puntos llenos son corridas completas.</small></div>
+<section class="charts">
+<div class="card"><div class="ch"><canvas id="cC"></canvas></div></div>
+<div class="card"><div class="ch"><canvas id="cX"></canvas></div></div>
+</section>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const DEF=[['L','Lado de la red L',4,150,1,50],['inv','Spines invertidos iniciales',0,2500,1,600],['T','Temperatura T',0.1,6,0.01,1.5],['J','Acoplamiento J',-2,2,0.05,1],['h','Campo externo h',-2,2,0.01,0],['kB','Constante k_B',0.1,3,0.05,1],['Mt','MCS de termalización',0,20000,100,5000],['Mm','MCS de muestreo',100,20000,100,5000],['speed','MCS por cuadro',1,100,1,4]];
+$('ctl').innerHTML=DEF.map(d=>`<div class="row"><label>${d[1]}</label><input type="range" id="${d[0]}" min="${d[2]}" max="${d[3]}" step="${d[4]}" value="${d[5]}"><input type="number" id="${d[0]}n" min="${d[2]}" max="${d[3]}" step="${d[4]}" value="${d[5]}"></div>`).join('');
+$('stats').innerHTML=[['mcs','MCS total'],['e','E / spin'],['m','M / spin'],['inv','Spines −1'],['ea','⟨E⟩ (muestreo)'],['ma','⟨|M|⟩ / spin'],['cv','Calor específico C_v'],['xs','Susceptibilidad χ']].map(s=>`<div class="stat"><span>${s[1]}</span><strong id="s_${s[0]}">–</strong></div>`).join('');
+
+const S={L:0,N:0,sp:null,E:0,M:0,mcs:0,phase:2,tEnd:null,Es:[],Ms:[],Is:[],a:null,running:false,sweep:false,queue:[],res:[]};
+const newAcc=()=>({E:0,E2:0,M:0,M2:0,aM:0,n:0});
+function P(){const o={};DEF.forEach(d=>o[d[0]]=+$(d[0]).value);o.init=$('init').value;return o}
+let PR=P();
+const TCc=p=>2*p.J/(p.kB*Math.log(1+Math.SQRT2));
+function setVal(id,v){$(id).value=v;$(id+'n').value=v}
+
+function recompute(){const{L,sp}=S;let E=0,M=0;for(let i=0;i<L;i++)for(let j=0;j<L;j++){const s=sp[i*L+j];const nb=sp[((i-1+L)%L)*L+j]+sp[((i+1)%L)*L+j]+sp[i*L+(j-1+L)%L]+sp[i*L+(j+1)%L];E+=-0.5*PR.J*s*nb-PR.h*s;M+=s}S.E=E;S.M=M}
+function reset(){
+ PR=P();const L=PR.L;S.L=L;S.N=L*L;const N=S.N;S.sp=new Int8Array(N).fill(1);
+ if(PR.init==='rand'){for(let i=0;i<N;i++)S.sp[i]=Math.random()<0.5?1:-1}
+ else{const k=Math.min(PR.inv,N);for(let c=0;c<k;c++){let i;do{i=Math.random()*N|0}while(S.sp[i]===-1);S.sp[i]=-1}}
+ recompute();S.mcs=0;S.Es=[];S.Ms=[];S.Is=[];S.a=newAcc();
+ S.phase=PR.Mt>0?0:1;S.tEnd=S.phase?0:null;refresh(true);
+}
+function sweep(p){
+ const{L,N,sp}=S,beta=1/(p.kB*p.T);
+ for(let k=0;k<N;k++){
+  const i=Math.random()*L|0,j=Math.random()*L|0,id=i*L+j;
+  const nb=sp[((i-1+L)%L)*L+j]+sp[((i+1)%L)*L+j]+sp[i*L+(j-1+L)%L]+sp[i*L+(j+1)%L];
+  const dE=2*sp[id]*(p.J*nb+p.h);
+  if(dE<=0||Math.random()<Math.exp(-beta*dE)){sp[id]=-sp[id];S.E+=dE;S.M+=2*sp[id]}
+ }
+}
+function step(){
+ sweep(PR);S.mcs++;S.Es.push(S.E);S.Ms.push(S.M);S.Is.push((S.N-S.M)/2);
+ if(S.phase===1){const a=S.a;a.E+=S.E;a.E2+=S.E*S.E;a.M+=S.M;a.M2+=S.M*S.M;a.aM+=Math.abs(S.M);a.n++;if(a.n>=PR.Mm)finish()}
+ else if(S.phase===0&&S.mcs>=PR.Mt){S.phase=1;S.tEnd=S.mcs}
+}
+function obs(){
+ const a=S.a,n=a.n;if(n<2)return null;const N=S.N,p=PR,Ep=a.E/n,Mp=a.M/n;
+ return{Ep,Es:Ep/N,Mp,Ms:a.aM/n/N,Cv:(a.E2/n-Ep*Ep)/(N*p.kB*p.T*p.T),X:(a.M2/n-Mp*Mp)/(N*p.kB*p.T)};
+}
+function finish(){
+ S.phase=2;const o=obs();if(o)S.res.push({T:PR.T,Cv:o.Cv,X:o.X});
+ if(S.sweep&&S.queue.length){setVal('T',+S.queue.shift().toFixed(4));PR=P();const r=S.running;reset();S.running=r}
+ else{S.running=false;S.sweep=false;$('go').textContent='▶ Iniciar'}
+ drawRes();
+}
+
+// ---- Dibujo de la red
+const cv=$('cv'),ctx=cv.getContext('2d'),off=document.createElement('canvas');
+function draw(){
+ const L=S.L;if(!L)return;off.width=off.height=L;const o=off.getContext('2d'),im=o.createImageData(L,L),d=im.data;
+ for(let i=0;i<S.N;i++){const u=S.sp[i]>0,k=i*4;d[k]=u?214:31;d[k+1]=u?39:119;d[k+2]=u?40:180;d[k+3]=255}
+ o.putImageData(im,0,0);ctx.imageSmoothingEnabled=false;ctx.drawImage(off,0,0,cv.width,cv.height);
+}
+
+// ---- Gráficas
+const css=getComputedStyle(document.documentElement);Chart.defaults.color=css.getPropertyValue('--fg').trim()||'#888';Chart.defaults.borderColor='rgba(128,128,128,.25)';
+const lineCh=(id,yt)=>new Chart($(id),{type:'line',data:{datasets:[{label:'Termalización',borderColor:'#d62728',data:[],pointRadius:0,borderWidth:1.3},{label:'Muestreo',borderColor:'#1f77b4',data:[],pointRadius:0,borderWidth:1.3}]},options:{animation:false,parsing:false,normalized:true,maintainAspectRatio:false,scales:{x:{type:'linear',min:0,title:{display:true,text:'MCS'}},y:{title:{display:true,text:yt}}},plugins:{legend:{position:'bottom'}}}});
+const cE=lineCh('cE','Energía E'),cM=lineCh('cM','Magnetización M'),cI=lineCh('cI','Número de spines con −1');
+const resCh=(id,yt,col)=>new Chart($(id),{type:'scatter',data:{datasets:[{label:yt,data:[],backgroundColor:col,borderColor:col,pointRadius:4,showLine:true,borderWidth:1},{label:'T_c teórica',data:[],showLine:true,borderDash:[6,4],borderColor:'#888',pointRadius:0,borderWidth:1.5},{label:'En curso (T actual)',data:[],showLine:false,backgroundColor:'transparent',borderColor:col,borderWidth:2,pointRadius:7,pointStyle:'rectRot'}]},options:{animation:false,maintainAspectRatio:false,scales:{x:{title:{display:true,text:'Temperatura T'}},y:{title:{display:true,text:yt},beginAtZero:true}},plugins:{legend:{position:'bottom'},title:{display:true,text:yt+' vs temperatura'}}}});
+const cC=resCh('cC','Calor específico C_v','#e07b00'),cX=resCh('cX','Susceptibilidad χ','#7a3ff2');
+function pts(arr,a,b,f,st){const o=[];for(let i=a;i<b;i+=st)o.push({x:i,y:arr[i]*f});return o}
+function drawLines(){
+ const n=S.mcs,st=Math.max(1,Math.ceil(n/1500)),f=$('norm').checked?1/S.N:1,te=S.tEnd===null?n:S.tEnd;
+ [[cE,S.Es,f],[cM,S.Ms,f],[cI,S.Is,1]].forEach(([c,arr,ff])=>{c.data.datasets[0].data=pts(arr,0,te,ff,st);c.data.datasets[1].data=pts(arr,Math.max(0,te-1),n,ff,st);c.update('none')});
+ cE.options.scales.y.title.text=f===1?'Energía E':'Energía por spin E/N';cM.options.scales.y.title.text=f===1?'Magnetización M':'Magnetización por spin M/N';drawRes();
+}
+function drawRes(){
+ const r=[...S.res].sort((a,b)=>a.T-b.T),tc=TCc(PR),o=S.phase===1?obs():null;
+ [[cC,'Cv'],[cX,'X']].forEach(([c,k])=>{const y=r.map(q=>({x:q.T,y:q[k]})),lv=o?[{x:PR.T,y:o[k]}]:[],m=Math.max(1e-9,...y.map(q=>q.y),...lv.map(q=>q.y))*1.1;
+  c.data.datasets[0].data=y;c.data.datasets[1].data=tc>0?[{x:tc,y:0},{x:tc,y:m}]:[];c.data.datasets[2].data=lv;c.update('none')});
+}
+let lastC=0;
+function refresh(force){
+ draw();const N=S.N||1,o=obs(),p=PR;
+ $('s_mcs').textContent=S.mcs;$('s_e').textContent=(S.E/N).toFixed(4);$('s_m').textContent=(S.M/N).toFixed(4);$('s_inv').textContent=(N-S.M)/2;
+ $('s_ea').textContent=o?(o.Es).toFixed(4):'–';$('s_ma').textContent=o?o.Ms.toFixed(4):'–';$('s_cv').textContent=o?o.Cv.toFixed(4):'–';$('s_xs').textContent=o?o.X.toFixed(4):'–';
+ $('phase').textContent=S.phase===0?'Termalización':S.phase===1?'Muestreo':(S.mcs?'Completado':'Listo');
+ $('prog').style.width=(S.phase===0?S.mcs/Math.max(1,p.Mt):S.phase===1?S.a.n/p.Mm:S.mcs?1:0)*100+'%';
+ const t=performance.now();if(force||t-lastC>150){lastC=t;drawLines()}
+}
+function updTc(){const t=TCc(PR);$('tc').textContent=t>0?'T_c = 2J / (k_B ln(1+√2)) ≈ '+t.toFixed(4):'T_c definida solo para J > 0'}
+
+// ---- Bucle
+function tick(){
+ if(S.running){const t0=performance.now();let k=0;
+  while(S.phase<2&&S.running&&(S.sweep?performance.now()-t0<14:k<PR.speed)){step();k++}
+  refresh();
+ }
+ requestAnimationFrame(tick);
+}
+
+// ---- Eventos
+DEF.forEach(d=>{const id=d[0];['',"n"].forEach(sfx=>$(id+sfx).addEventListener('input',e=>{
+ let v=+e.target.value;if(sfx&&(v<d[2]||v>d[3]||isNaN(v)))v=Math.min(d[3],Math.max(d[2],isNaN(v)?d[5]:v));
+ const mx=id==='inv'?+$('inv').max:d[3];if(id==='inv')v=Math.min(v,mx);
+ setVal(id,v);PR=P();
+ if(id==='L'){const m=v*v;$('inv').max=$('invn').max=m;if(+$('inv').value>m)setVal('inv',m);PR=P();reset()}
+ else if(id==='inv')reset();
+ else if(['T','J','h','kB'].includes(id)){if(id==='J'||id==='h')recompute();S.a=newAcc();updTc();drawRes();refresh()}
+ else refresh();
+}))});
+$('init').addEventListener('change',()=>reset());
+$('norm').addEventListener('change',()=>drawLines());
+$('go').onclick=()=>{
+ if(S.running){S.running=false;S.sweep=false;S.queue=[];$('go').textContent='▶ Iniciar';return}
+ if(S.phase===2)reset();S.running=true;$('go').textContent='⏸ Pausa';
+};
+$('stp').onclick=()=>{S.running=false;$('go').textContent='▶ Iniciar';if(S.phase<2){step();refresh(true)}};
+$('rst').onclick=()=>{S.running=false;S.sweep=false;S.queue=[];$('go').textContent='▶ Iniciar';reset()};
+$('clr').onclick=()=>{S.res=[];drawRes()};
+$('swp').onclick=()=>{
+ const a=+$('t0').value,b=+$('t1').value,n=Math.max(2,Math.min(60,+$('tn').value|0));
+ if(!(b>a)||a<=0)return;
+ S.queue=Array.from({length:n},(_,i)=>a+(b-a)*i/(n-1));
+ setVal('T',+Math.min(6,S.queue.shift()).toFixed(4));S.sweep=true;PR=P();reset();S.running=true;$('go').textContent='⏸ Pausa';
+};
+$('inv').max=$('invn').max=PR.L*PR.L;
+$('swp2').onclick=()=>$('swp').click();
+updTc();reset();drawRes();tick();
+</script>
+</body>
+</html>

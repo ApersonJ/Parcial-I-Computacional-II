@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oscilador de Morse forzado: simulación interactiva</title>
+<style>
+:root{--bg:#f6f7f9;--fg:#1b1f27;--mut:#5b6573;--ac:#c0392b;--ac2:#2a6fb0;--card:#fff;--bd:#d9dde3}
+@media (prefers-color-scheme:dark){:root{--bg:#14171c;--fg:#e8ebf0;--mut:#9aa4b2;--ac:#ff7a6b;--ac2:#6fb3ff;--card:#1d2128;--bd:#2d333c}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px Georgia,serif}
+h1{font-size:20px;margin:0;padding:10px 16px;border-bottom:3px solid var(--ac)}
+#app{display:grid;grid-template-columns:270px 1fr;gap:12px;padding:12px}
+@media(max-width:900px){#app{grid-template-columns:1fr}}
+aside,.cv{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:10px}
+aside label{display:grid;grid-template-columns:1fr 90px;gap:6px;margin:3px 0;align-items:center}
+aside input,aside select{width:100%;font:inherit;padding:2px 4px;background:var(--bg);color:var(--fg);border:1px solid var(--bd);border-radius:4px}
+aside h3{margin:10px 0 4px;font-size:14px;color:var(--ac2)}
+button{font:inherit;padding:4px 10px;margin:2px;border:1px solid var(--bd);background:var(--card);color:var(--fg);border-radius:6px;cursor:pointer}
+#grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:700px){#grid{grid-template-columns:1fr}}
+.cv b{font-size:13px;color:var(--mut)}canvas{width:100%;height:230px;display:block}
+aside{position:sticky;top:8px;align-self:start;max-height:calc(100vh - 16px);overflow:auto}
+@media(max-width:900px){aside{position:static;max-height:none}}
+#info{font:13px Consolas,monospace;color:var(--mut);margin:8px 2px}
+.mut{color:var(--mut);font-size:12px}
+</style></head><body>
+<h1>Oscilador de Morse forzado y amortiguado: simulación interactiva</h1>
+<div id="app">
+<aside>
+<label>Caso predefinido<select id="pre"></select></label>
+<div><button id="go">▶ / ⏸</button><button id="rs">↺ Reiniciar</button></div>
+<h3>Modo</h3>
+<label>Sistema<select id="mode"><option value="1">1 oscilador</option><option value="2">2 acoplados (RK4)</option></select></label>
+<label>Método<select id="met"><option value="1">Euler</option><option value="2">Euler-Cromer</option><option value="3">RK2</option><option value="4">RK3</option><option value="5" selected>RK4</option></select></label>
+<div id="ctl"></div>
+<p class="mut">Los parámetros físicos y dt se aplican en vivo. Las condiciones iniciales se aplican al reiniciar. El núcleo numérico es una traducción de <code>osc_morse_forzado.cpp</code> y <code>acoplados.cpp</code>.</p>
+</aside>
+<main><div class="cv" style="margin-bottom:10px"><b>Representación física: molécula diatómica (o dos acopladas)</b><canvas id="c0"></canvas><span class="mut">Cada molécula son dos átomos con centro de masa fijo; la distancia entre ellos es la coordenada del código (x − xe = estiramiento del enlace). Resorte azul: enlace estirado; rojo: comprimido; punteado: enlace roto. Flechas verdes: fuerza externa A·cos(ωt). Si hay dos moléculas, el resorte verde es el acople κ.</span></div><div id="grid">
+<div class="cv"><b>Pozo de Morse P(x) y partícula</b><canvas id="c1"></canvas></div>
+<div class="cv"><b>Posición x(t)</b><canvas id="c2"></canvas></div>
+<div class="cv"><b>Espacio de fase v(x) y puntos de Poincaré (t = nT)</b><canvas id="c3"></canvas></div>
+<div class="cv"><b id="t4">Energía E(t)</b><canvas id="c4"></canvas></div>
+</div><div id="info"></div></main></div>
+<script>
+/*CORE: traduccion de osc_morse_forzado.cpp y acoplados.cpp*/
+function acel(t,x,v,P){ // calcularAceleracion
+  var e1=Math.exp(-P.a*(x-P.xe)),e2=Math.exp(-2*P.a*(x-P.xe));
+  return(-2*P.D*P.a*(e1-e2)-P.g*v+P.A*Math.cos(P.w*t))/P.m;}
+function pot(x,P){var f=1-Math.exp(-P.a*(x-P.xe));return P.D*f*f;} // calcularPotencial
+function paso(met,s,t,dt,P){ // MuevaseEuler ... MuevaseRK4
+  var x=s.x,v=s.v,K1x,K1v,K2x,K2v,K3x,K3v,K4x,K4v;
+  if(met==1){var a0=acel(t,x,v,P);s.x=x+dt*v;s.v=v+dt*a0;}
+  else if(met==2){s.v=v+dt*acel(t,x,v,P);s.x=x+dt*s.v;}
+  else if(met==3){K1x=v;K1v=acel(t,x,v,P);var xm=x+dt/2*K1x,vm=v+dt/2*K1v;
+    s.x=x+dt*vm;s.v=v+dt*acel(t+dt/2,xm,vm,P);}
+  else if(met==4){K1x=v;K1v=acel(t,x,v,P);
+    var x2=x+dt/2*K1x,v2=v+dt/2*K1v;K2x=v2;K2v=acel(t+dt/2,x2,v2,P);
+    var x3=x-dt*K1x+2*dt*K2x,v3=v-dt*K1v+2*dt*K2v;K3x=v3;K3v=acel(t+dt,x3,v3,P);
+    s.x=x+dt/6*(K1x+4*K2x+K3x);s.v=v+dt/6*(K1v+4*K2v+K3v);}
+  else{K1x=v;K1v=acel(t,x,v,P);
+    var x2=x+dt/2*K1x,v2=v+dt/2*K1v;K2x=v2;K2v=acel(t+dt/2,x2,v2,P);
+    var x3=x+dt/2*K2x,v3=v+dt/2*K2v;K3x=v3;K3v=acel(t+dt/2,x3,v3,P);
+    var x4=x+dt*K3x,v4=v+dt*K3v;K4x=v4;K4v=acel(t+dt,x4,v4,P);
+    s.x=x+dt/6*(K1x+2*K2x+2*K3x+K4x);s.v=v+dt/6*(K1v+2*K2v+2*K3v+K4v);}}
+function acop(t,x,v,xn,P){return acel(t,x,v,P)+P.k*(xn-x)/P.m;} // calcularAcelAcoplada
+function pasoAcop(s1,s2,t,dt,P){ // avanzarAcopladosRK4
+  var x1=s1.x,v1=s1.v,x2=s2.x,v2=s2.v,h=dt/2;
+  var a1=v1,b1=acop(t,x1,v1,x2,P),c1=v2,d1=acop(t,x2,v2,x1,P);
+  var x1b=x1+h*a1,v1b=v1+h*b1,x2b=x2+h*c1,v2b=v2+h*d1;
+  var a2=v1b,b2=acop(t+h,x1b,v1b,x2b,P),c2=v2b,d2=acop(t+h,x2b,v2b,x1b,P);
+  var x1c=x1+h*a2,v1c=v1+h*b2,x2c=x2+h*c2,v2c=v2+h*d2;
+  var a3=v1c,b3=acop(t+h,x1c,v1c,x2c,P),c3=v2c,d3=acop(t+h,x2c,v2c,x1c,P);
+  var x1d=x1+dt*a3,v1d=v1+dt*b3,x2d=x2+dt*c3,v2d=v2+dt*d3;
+  var a4=v1d,b4=acop(t+dt,x1d,v1d,x2d,P),c4=v2d,d4=acop(t+dt,x2d,v2d,x1d,P);
+  s1.x=x1+dt/6*(a1+2*a2+2*a3+a4);s1.v=v1+dt/6*(b1+2*b2+2*b3+b4);
+  s2.x=x2+dt/6*(c1+2*c2+2*c3+c4);s2.v=v2+dt/6*(d1+2*d2+2*d3+d4);}
+/*ENDCORE*/
+
+var $=function(i){return document.getElementById(i)};
+var CT=[['D','Energía de disociación D',5],['a','Rigidez a',1],['xe','Equilibrio xe',0],['m','Masa m',1],
+['g','Amortiguamiento γ',0.2],['A','Amplitud A',2],['w','Frecuencia ω',2],['x0','x0',0.5],['v0','v0',0],['dt','Paso dt',0.005],['spf','Pasos por cuadro',8]];
+var CA=[['k','Acoplamiento κ',1.5],['x2','x0 del osc. 2',0.501],['v2','v0 del osc. 2',0.5]];
+CT.concat(CA).forEach(function(c){var l=document.createElement('label');if(CA.indexOf(c)>=0)l.className='acop';
+  l.innerHTML=c[1]+'<input id="'+c[0]+'" type="number" step="any" value="'+c[2]+'">';$('ctl').appendChild(l)});
+var PRE={
+'Forzado periódico (γ=0,2; A=2; ω=2)':{D:5,a:1,xe:0,m:1,g:.2,A:2,w:2,x0:.5,v0:0,dt:.005,mode:1,met:5},
+'Conservativo: validación (γ=A=0)':{D:2,a:1.1,xe:0,m:1,g:0,A:0,w:1,x0:-.5,v0:0,dt:.01,mode:1,met:5},
+'Duplicación de período (A=2,2)':{D:5,a:1,xe:0,m:1,g:.5,A:2.2,w:2.6,x0:.5,v0:0,dt:.005,mode:1,met:5},
+'Caos (γ=0,5; A=3; ω=2,6)':{D:5,a:1,xe:0,m:1,g:.5,A:3,w:2.6,x0:.5,v0:0,dt:.005,mode:1,met:5},
+'Acoplados: sincronizan (κ=1,5)':{D:5,a:1,xe:0,m:1,g:.5,A:3,w:2.6,x0:.5,v0:0,x2:.501,v2:.5,k:1.5,dt:.005,mode:2,met:5},
+'Acoplados: control sin acople (κ=0)':{D:5,a:1,xe:0,m:1,g:.5,A:3,w:2.6,x0:.5,v0:0,x2:.501,v2:.5,k:0,dt:.005,mode:2,met:5},
+'Euler: energía que se dispara':{D:2,a:1.1,xe:0,m:1,g:0,A:0,w:1,x0:-.5,v0:0,dt:.01,mode:1,met:1}};
+Object.keys(PRE).forEach(function(n){var o=document.createElement('option');o.textContent=n;$('pre').appendChild(o)});
+function aplicar(n){var q=PRE[n];for(var k in q){if(k=='mode'||k=='met')$(k).value=q[k];else $(k).value=q[k]}vista();reset();}
+function vista(){var ac=$('mode').value==2;document.querySelectorAll('.acop').forEach(function(e){e.style.display=ac?'':'none'});
+  if(ac)$('met').value=5;$('met').disabled=ac;$('c0').style.height=ac?'330px':'190px';$('t4').textContent=ac?'Error de sincronización e(t) = |x1 − x2| (escala log)':'Energía E(t)';}
+function leer(){var P={};CT.concat(CA).forEach(function(c){P[c[0]]=parseFloat($(c[0]).value)});P.met=+$('met').value;P.mode=+$('mode').value;return P;}
+
+var s1,s2,i,tb,ib,ldt,run=true,dis=false,D={},PC=[],NMAX=4000;
+function reset(){var P=leer();s1={x:P.x0,v:P.v0};s2={x:P.x2,v:P.v2};i=0;tb=0;ib=0;ldt=P.dt;dis=false;
+  D={t:[],x:[],v:[],E:[],x2:[],e:[]};PC=[];}
+function frame(){var P=leer();
+  if(run&&!dis&&P.dt>0&&P.m>0){
+    for(var n=0;n<P.spf;n++){
+      if(P.dt!==ldt){tb=tb+(i-ib)*ldt;ib=i;ldt=P.dt;}
+      var t=tb+(i-ib)*P.dt,T=2*Math.PI/P.w;
+      if(P.mode==2)pasoAcop(s1,s2,t,P.dt,P);else paso(P.met,s1,t,P.dt,P);
+      i++;var t2=tb+(i-ib)*P.dt;
+      if(Math.floor(t2/T)>Math.floor(t/T))PC.push([s1.x,s1.v]);
+      var rec=Math.max(1,Math.round(0.02/P.dt));
+      if(i%rec==0){D.t.push(t2);D.x.push(s1.x);D.v.push(s1.v);D.E.push(.5*P.m*s1.v*s1.v+pot(s1.x,P));D.x2.push(s2.x);D.e.push(Math.abs(s1.x-s2.x));
+        if(D.t.length>NMAX)for(var q in D)D[q].shift();}
+      if(PC.length>700)PC.shift();
+      if(Math.abs(s1.x)>50||isNaN(s1.x)){dis=true;break;}}}
+  dibujar(P);requestAnimationFrame(frame);}
+
+function ctx(id){var c=$(id),r=window.devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;
+  if(c.width!=w*r){c.width=w*r;c.height=h*r}var g=c.getContext('2d');g.setTransform(r,0,0,r,0,0);g.clearRect(0,0,w,h);return[g,w,h]}
+function col(n){return getComputedStyle(document.body).getPropertyValue(n)}
+function chart(id,S,o){var q=ctx(id),g=q[0],W=q[1],H=q[2],L=46,B=20,T=6,R=8;
+  var x0=1e99,x1=-1e99,y0=1e99,y1=-1e99;
+  S.forEach(function(s){for(var j=0;j<s.x.length;j++){var y=o.log?Math.log10(Math.max(s.y[j],1e-14)):s.y[j];
+    x0=Math.min(x0,s.x[j]);x1=Math.max(x1,s.x[j]);y0=Math.min(y0,y);y1=Math.max(y1,y)}});
+  if(o.xr){x0=o.xr[0];x1=o.xr[1]}if(o.yr){y0=o.yr[0];y1=o.yr[1]}
+  if(!(x1>x0)){x0-=1;x1+=1}if(!(y1>y0)){y0-=1;y1+=1}var pm=o.yr?0:(y1-y0)*.06;y0-=pm;y1+=pm;
+  var mx=function(x){return L+(x-x0)/(x1-x0)*(W-L-R)},my=function(y){return H-B-(y-y0)/(y1-y0)*(H-B-T)};
+  g.strokeStyle=col('--bd');g.fillStyle=col('--mut');g.font='11px sans-serif';g.lineWidth=1;
+  for(var k=0;k<=4;k++){var yy=y0+(y1-y0)*k/4,xx=x0+(x1-x0)*k/4;
+    g.beginPath();g.moveTo(L,my(yy));g.lineTo(W-R,my(yy));g.stroke();
+    g.fillText(o.log?'1e'+yy.toFixed(0):yy.toPrecision(2),2,my(yy)+3);g.fillText(xx.toPrecision(3),mx(xx)-12,H-5);}
+  S.forEach(function(s){g.fillStyle=g.strokeStyle=s.c;
+    if(s.pt){for(var j=0;j<s.x.length;j++)g.fillRect(mx(s.x[j])-1.5,my(s.y[j])-1.5,3,3)}
+    else{g.beginPath();for(var j=0;j<s.x.length;j++){var y=o.log?Math.log10(Math.max(s.y[j],1e-14)):s.y[j];
+      j?g.lineTo(mx(s.x[j]),my(y)):g.moveTo(mx(s.x[j]),my(y))}g.lineWidth=1.5;g.stroke()}});
+  return{mx:mx,my:my}}
+function resorte(g,x1,y1,x2,y2,n,amp){var dx=x2-x1,dy=y2-y1,L=Math.hypot(dx,dy)||1,nx=-dy/L,ny=dx/L;g.beginPath();g.moveTo(x1,y1);
+  for(var j=1;j<=n;j++){var f=(j-.5)/n,sg=j%2?1:-1;g.lineTo(x1+dx*f+nx*amp*sg,y1+dy*f+ny*amp*sg)}g.lineTo(x2,y2);g.stroke()}
+function flecha(g,x,y,len,c){if(Math.abs(len)<3)return;var s=len>0?1:-1;g.strokeStyle=g.fillStyle=c;g.lineWidth=3;g.beginPath();g.moveTo(x,y);g.lineTo(x+len,y);g.stroke();
+  g.beginPath();g.moveTo(x+len,y);g.lineTo(x+len-9*s,y-5);g.lineTo(x+len-9*s,y+5);g.fill()}
+function molecula(P){var q=ctx('c0'),g=q[0],W=q[1],H=q[2],ac=P.mode==2,R=15,cx=W/2,Lb=Math.min(130,W*.2),K=Math.min(70,W*.1),
+  F=P.A*Math.cos(P.w*(tb+(i-ib)*P.dt)),lim=W-2*R-8,C1=col('--ac'),C2=col('--ac2'),FG=col('--fg'),MU=col('--mut'),pos=[];
+  var fila=function(s,y,nom){var d=Math.max(-.85,Math.min(8,(s.x-P.xe)*P.a))*K,sp=Math.min(lim,Math.max(1.8*R,Lb+d)),xl=cx-sp/2,xr=cx+sp/2,
+    roto=s.x>P.xe&&pot(s.x,P)>.98*P.D,dd=s.x-P.xe;
+    g.strokeStyle=MU;g.lineWidth=1;g.setLineDash([3,4]);[cx-Lb/2,cx+Lb/2].forEach(function(u){g.beginPath();g.moveTo(u,y-R-8);g.lineTo(u,y+R+8);g.stroke()});g.setLineDash([]);
+    if(roto){g.strokeStyle=MU;g.setLineDash([6,6]);g.beginPath();g.moveTo(xl+R,y);g.lineTo(xr-R,y);g.stroke();g.setLineDash([])}
+    else{g.strokeStyle=dd>=0?C2:C1;g.lineWidth=2.5;resorte(g,xl+R,y,xr-R,y,12,9)}
+    var len=Math.max(-50,Math.min(50,F*12));flecha(g,xr+R+3,y,len,'#2e9e5b');flecha(g,xl-R-3,y,-len,'#2e9e5b');
+    g.fillStyle='#5b7fa6';g.beginPath();g.arc(xl,y,R,0,7);g.fill();g.fillStyle='#d98c3a';g.beginPath();g.arc(xr,y,R,0,7);g.fill();
+    g.fillStyle=FG;g.font='12px sans-serif';g.fillText(nom+'   x − xe = '+dd.toFixed(3)+(roto?'   — enlace roto (disociación)':''),8,y-R-14);pos.push([xr,y])};
+  if(ac){fila(s1,H*.27,'Oscilador 1');fila(s2,H*.73,'Oscilador 2');
+    g.strokeStyle='#2e9e5b';g.lineWidth=2;resorte(g,pos[0][0],pos[0][1]+R,pos[1][0],pos[1][1]-R,8,7);g.fillStyle='#2e9e5b';g.fillText('κ = '+P.k,pos[0][0]+14,H/2)}
+  else fila(s1,H*.55,'Molécula diatómica')}
+function dibujar(P){molecula(P);var A1=col('--ac'),A2=col('--ac2'),n=D.t.length,ac=P.mode==2;
+  // 1. pozo
+  var xa=P.xe-.82/P.a,xb=P.xe+4.5/P.a,px=[],py=[];for(var j=0;j<=200;j++){var x=xa+(xb-xa)*j/200;px.push(x);py.push(pot(x,P))}
+  var m=chart('c1',[{x:px,y:py,c:A2}],{xr:[xa,xb],yr:[0,1.6*P.D]}),g=$('c1').getContext('2d');
+  var dib=function(s,c){var x=Math.min(xb,Math.max(xa,s.x));g.fillStyle=c;g.beginPath();g.arc(m.mx(x),m.my(Math.min(1.6*P.D,pot(x,P))),7,0,7);g.fill();
+    g.setLineDash([4,4]);g.strokeStyle=c;g.beginPath();var E=.5*P.m*s.v*s.v+pot(s.x,P);g.moveTo(m.mx(xa),m.my(Math.min(1.6*P.D,E)));g.lineTo(m.mx(xb),m.my(Math.min(1.6*P.D,E)));g.stroke();g.setLineDash([])};
+  dib(s1,A1);if(ac)dib(s2,'#2e9e5b');
+  // 2. x(t)
+  var S=[{x:D.t,y:D.x,c:A1}];if(ac)S.push({x:D.t,y:D.x2,c:'#2e9e5b'});chart('c2',S,{});
+  // 3. fase
+  var k0=Math.max(0,n-2500);chart('c3',[{x:D.x.slice(k0),y:D.v.slice(k0),c:A2},{x:PC.map(function(p){return p[0]}),y:PC.map(function(p){return p[1]}),c:A1,pt:1}],{});
+  // 4. energia o error
+  chart('c4',[{x:D.t,y:ac?D.e:D.E,c:ac?'#2e9e5b':A1}],{log:ac});
+  $('info').textContent='t = '+(tb+(i-ib)*P.dt).toFixed(2)+'   x = '+s1.x.toFixed(4)+'   v = '+s1.v.toFixed(4)+'   E = '+(.5*P.m*s1.v*s1.v+pot(s1.x,P)).toFixed(4)+
+   (ac?'   e = '+Math.abs(s1.x-s2.x).toExponential(2):'')+'   período del forzamiento T = '+(2*Math.PI/P.w).toFixed(3)+(dis?'   — ENLACE DISOCIADO (|x| > 50): reinicie':'')+(P.A!=0&&P.dt>0&&2*Math.PI/P.w/P.dt<20?'   — aviso: dt grande respecto a T':'');}
+$('go').onclick=function(){run=!run};$('rs').onclick=reset;$('mode').onchange=function(){vista();reset()};
+$('pre').onchange=function(){aplicar($('pre').value)};
+aplicar(Object.keys(PRE)[0]);requestAnimationFrame(frame);
+</script></body></html>
